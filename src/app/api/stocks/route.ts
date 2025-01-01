@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase-client'
 import { KoreaInvestmentAPI } from '@/lib/korea-investment'
+import { Stock } from '@/types'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
@@ -19,11 +20,28 @@ export async function GET(request: Request) {
     const stocksWithPrices = await Promise.all(
       stocks.map(async (stock) => {
         try {
-          const price = await api.getStockPrice(stock.symbol)
-          return { ...stock, ...price }
+          const priceInfo = await api.getStockPrice(stock.symbol)
+          return {
+            symbol: stock.symbol,
+            name: stock.name,
+            market: stock.market,
+            sector: stock.sector,
+            price: priceInfo.price,
+            change: priceInfo.change,
+            volume: priceInfo.volume,
+            high: priceInfo.high,
+            low: priceInfo.low
+          } as Stock
         } catch (error) {
           console.error(`Error fetching price for ${stock.symbol}:`, error)
-          return { ...stock, price: 0, change: 0 }
+          return {
+            ...stock,
+            price: 0,
+            change: 0,
+            volume: 0,
+            high: 0,
+            low: 0
+          } as Stock
         }
       })
     )
