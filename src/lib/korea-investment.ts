@@ -47,10 +47,15 @@ export class KoreaInvestmentAPI {
       }
 
       const data = await response.json()
+      
+      if (!data.access_token) {
+        throw new Error('No access token received')
+      }
+
       this.accessToken = data.access_token
       this.tokenExpiresAt = new Date(Date.now() + 23 * 60 * 60 * 1000) // 23시간
       
-      return this.accessToken
+      return this.accessToken as string  // 타입 단언 추가
     } catch (error) {
       console.error('Error getting access token:', error)
       throw error
