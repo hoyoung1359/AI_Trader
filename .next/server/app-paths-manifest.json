@@ -1,9 +1,9 @@
 {
   "/_not-found": "app/_not-found.js",
   "/api/stocks/route": "app/api/stocks/route.js",
-  "/api/transactions/route": "app/api/transactions/route.js",
-  "/api/trade/route": "app/api/trade/route.js",
   "/api/portfolio/route": "app/api/portfolio/route.js",
+  "/api/trade/route": "app/api/trade/route.js",
   "/api/users/[userId]/route": "app/api/users/[userId]/route.js",
+  "/api/transactions/route": "app/api/transactions/route.js",
   "/page": "app/page.js"
 }
