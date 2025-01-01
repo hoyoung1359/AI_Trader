@@ -69,12 +69,14 @@ export class KoreaInvestmentAPI {
       const response = await fetch(
         `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-price?FID_COND_MRKT_DIV_CODE=J&FID_INPUT_ISCD=${symbol}`,
         {
+          method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`,
             appkey: this.apiKey,
             appsecret: this.apiSecret,
             tr_id: "FHKST01010100",
-          },
+            "content-type": "application/json"
+          }
         }
       )
 
@@ -84,15 +86,49 @@ export class KoreaInvestmentAPI {
 
       const data = await response.json()
       
+      if (!data.output) {
+        throw new Error('No price data received')
+      }
+
       return {
-        price: parseFloat(data.output.stck_prpr),    // 현재가
-        change: parseFloat(data.output.prdy_ctrt),   // 전일대비
-        volume: parseInt(data.output.acml_vol),      // 거래량
-        high: parseFloat(data.output.high),          // 고가
-        low: parseFloat(data.output.low),            // 저가
+        price: parseFloat(data.output.stck_prpr) || 0,    // 현재가
+        change: parseFloat(data.output.prdy_ctrt) || 0,   // 전일대비
+        volume: parseInt(data.output.acml_vol) || 0,      // 거래량
+        high: parseFloat(data.output.high) || 0,          // 고가
+        low: parseFloat(data.output.low) || 0             // 저가
       }
     } catch (error) {
       console.error('Error fetching stock price:', error)
+      throw error
+    }
+  }
+
+  async getStockHistory(symbol: string, startDate: string, endDate: string) {
+    try {
+      const token = await this.getAccessToken()
+      
+      const response = await fetch(
+        `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-daily-price`,
+        {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            appkey: this.apiKey,
+            appsecret: this.apiSecret,
+            tr_id: "FHKST01010400",
+            "content-type": "application/json"
+          }
+        }
+      )
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch stock history')
+      }
+
+      const data = await response.json()
+      return data.output || []
+    } catch (error) {
+      console.error('Error fetching stock history:', error)
       throw error
     }
   }

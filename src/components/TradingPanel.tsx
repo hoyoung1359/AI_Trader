@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Stock, TradeRequest } from '@/types'
 import { executeTrade } from '@/services/api'
+import StockChart from './StockChart'
 
 interface TradingPanelProps {
   stock: Stock | null
@@ -33,31 +34,35 @@ export default function TradingPanel({ stock }: TradingPanelProps) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="font-bold">{stock.name}</h3>
-        <p>현재가: {stock.price.toLocaleString()} 원</p>
-      </div>
-      <div>
-        <input 
-          type="number" 
-          value={quantity}
-          onChange={(e) => setQuantity(Number(e.target.value))}
-          placeholder="수량"
-          className="w-full p-2 border rounded mb-2"
-        />
-        <div className="grid grid-cols-2 gap-2">
-          <button 
-            onClick={() => handleTrade('BUY')}
-            className="bg-red-500 text-white p-2 rounded"
-          >
-            매수
-          </button>
-          <button 
-            onClick={() => handleTrade('SELL')}
-            className="bg-blue-500 text-white p-2 rounded"
-          >
-            매도
-          </button>
+      {stock && <StockChart symbol={stock.symbol} name={stock.name} />}
+      
+      <div className="border rounded p-4">
+        <div>
+          <h3 className="font-bold">{stock.name}</h3>
+          <p>현재가: {stock.price.toLocaleString()} 원</p>
+        </div>
+        <div>
+          <input 
+            type="number" 
+            value={quantity}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+            placeholder="수량"
+            className="w-full p-2 border rounded mb-2"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <button 
+              onClick={() => handleTrade('BUY')}
+              className="bg-red-500 text-white p-2 rounded"
+            >
+              매수
+            </button>
+            <button 
+              onClick={() => handleTrade('SELL')}
+              className="bg-blue-500 text-white p-2 rounded"
+            >
+              매도
+            </button>
+          </div>
         </div>
       </div>
     </div>
