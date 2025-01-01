@@ -1,6 +1,16 @@
 import { useEffect, useState } from 'react'
 import { fetchPortfolio } from '@/services/api'
 
+interface PortfolioItem {
+  quantity: number
+  current_price: number
+  average_price: number
+  stock_master: {
+    sector: string
+    name: string
+  }
+}
+
 interface PortfolioSummary {
   totalValue: number
   totalProfit: number
@@ -26,22 +36,24 @@ export default function PortfolioAnalysis({ userId }: PortfolioAnalysisProps) {
 
   const loadPortfolioSummary = async () => {
     try {
-      const portfolio = await fetchPortfolio(userId)
+      const portfolio = await fetchPortfolio(userId) as PortfolioItem[]
       
       // 포트폴리오 요약 계산
-      const totalValue = portfolio.reduce((sum, item) => 
+      const totalValue = portfolio.reduce((sum: number, item: PortfolioItem) => 
         sum + (item.quantity * item.current_price), 0
       )
 
-      const totalProfit = portfolio.reduce((sum, item) => 
+      const totalProfit = portfolio.reduce((sum: number, item: PortfolioItem) => 
         sum + ((item.current_price - item.average_price) * item.quantity), 0
       )
 
-      const profitPercent = (totalProfit / (totalValue - totalProfit)) * 100
+      const profitPercent = totalValue > 0 
+        ? (totalProfit / (totalValue - totalProfit)) * 100 
+        : 0
 
       // 섹터별 분포 계산
       const sectorDistribution = portfolio.reduce((acc, item) => {
-        const sector = item.stock_master.sector
+        const sector = item.stock_master.sector || '기타'
         const value = item.quantity * item.current_price
         
         if (!acc[sector]) {
@@ -53,7 +65,7 @@ export default function PortfolioAnalysis({ userId }: PortfolioAnalysisProps) {
 
       // 섹터별 비중 계산
       Object.values(sectorDistribution).forEach(sector => {
-        sector.percent = (sector.value / totalValue) * 100
+        sector.percent = totalValue > 0 ? (sector.value / totalValue) * 100 : 0
       })
 
       setSummary({
