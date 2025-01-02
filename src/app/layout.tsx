@@ -15,6 +15,9 @@ function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
 
+  // 디버깅용 콘솔 로그 추가
+  console.log('Auth State:', { user, loading, pathname })
+
   const navItems = [
     { name: '홈', path: '/' },
     { name: '포트폴리오', path: '/portfolio' },
@@ -24,15 +27,27 @@ function MainLayout({ children }: { children: React.ReactNode }) {
 
   // 로딩 중일 때 로딩 표시
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">
-      <div className="loading loading-lg"></div>
-    </div>
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="loading loading-lg"></div>
+          <p className="mt-4 text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    )
   }
 
   // 로그인하지 않은 경우 로그인/회원가입 페이지는 그대로 표시
   if (!user && !['/login', '/register'].includes(pathname)) {
+    console.log('Redirecting to login...')
     router.push('/login')
-    return null
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600">로그인 페이지로 이동 중...</p>
+        </div>
+      </div>
+    )
   }
 
   // 로그인한 경우 로그인/회원가입 페이지 접근 시 홈으로 리다이렉트
