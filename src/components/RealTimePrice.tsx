@@ -1,51 +1,38 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { KoreaInvestmentAPI } from '@/lib/korea-investment'
 
-interface RealTimePriceProps {
+interface Props {
   symbol: string
 }
 
-export default function RealTimePrice({ symbol }: RealTimePriceProps) {
+export default function RealTimePrice({ symbol }: Props) {
   const [price, setPrice] = useState<number | null>(null)
-  const [change, setChange] = useState<number>(0)
+  const [change, setChange] = useState<number | null>(null)
+  const [ws, setWs] = useState<WebSocket | null>(null)
 
   useEffect(() => {
     const api = new KoreaInvestmentAPI()
-    
-    // 초기 가격 조회
-    const fetchInitialPrice = async () => {
-      try {
-        const priceInfo = await api.getStockPrice(symbol)
-        setPrice(priceInfo.price)
-        setChange(priceInfo.change)
-      } catch (error) {
-        console.error('Error fetching initial price:', error)
-      }
-    }
+    let websocket: WebSocket | null = null
 
-    fetchInitialPrice()
-
-    // 실시간 가격 구독
-    let ws: WebSocket
     const subscribeToPrice = async () => {
       try {
-        ws = await api.subscribeToStockPrice(symbol, (data) => {
+        websocket = await api.subscribeToStockPrice(symbol, (data) => {
           setPrice(data.body.output.price)
           setChange(data.body.output.change)
         })
+        setWs(websocket)
       } catch (error) {
-        console.error('Error subscribing to price:', error)
+        console.error('Failed to subscribe to price:', error)
       }
     }
 
     subscribeToPrice()
 
-    // 컴포넌트 언마운트 시 WebSocket 연결 해제
     return () => {
-      if (ws) {
-        ws.close()
+      if (websocket) {
+        websocket.close()
       }
     }
   }, [symbol])
@@ -53,13 +40,17 @@ export default function RealTimePrice({ symbol }: RealTimePriceProps) {
   if (!price) return <div>로딩 중...</div>
 
   return (
-    <div className={`text-lg font-bold ${
-      change >= 0 ? 'text-red-600' : 'text-blue-600'
-    }`}>
-      {price?.toLocaleString() ?? '-'}원
-      <span className="text-sm ml-2">
-        {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-      </span>
+    <div>
+      <div className={`text-lg font-bold ${
+        change && change >= 0 ? 'text-red-600' : 'text-blue-600'
+      }`}>
+        {price.toLocaleString()}원
+      </div>
+      {change && (
+        <div className={change >= 0 ? 'text-red-600' : 'text-blue-600'}>
+          {change >= 0 ? '+' : ''}{change.toFixed(2)}%
+        </div>
+      )}
     </div>
   )
 } 

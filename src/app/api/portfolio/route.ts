@@ -3,53 +3,78 @@ import { supabase } from '@/lib/supabase-client'
 import { KoreaInvestmentAPI } from '@/lib/korea-investment'
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const userId = searchParams.get('userId')
-
-  if (!userId) {
-    return NextResponse.json(
-      { error: 'User ID is required' },
-      { status: 400 }
-    )
-  }
-
   try {
-    const { data: portfolio, error } = await supabase
-      .from('portfolio')
-      .select(`
-        *,
-        stock_master (
-          name,
-          market,
-          sector
-        )
-      `)
-      .eq('user_id', userId)
+    // 현재 인증된 사용자 확인
+    const { data: { session }, error: authError } = await supabase.auth.getSession()
+    if (authError) throw authError
+    if (!session) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-    if (error) throw error
+    // 사용자의 포트폴리오 조회
+    const { data: portfolios, error: dbError } = await supabase
+      .from('portfolios')
+      .select('*')
+      .eq('user_id', session.user.id)
 
-    // 현재가 정보 추가
+    if (dbError) throw dbError
+
+    // 현재가 조회
     const api = new KoreaInvestmentAPI()
-    const portfolioWithPrices = await Promise.all(
-      portfolio.map(async (item) => {
+    const portfoliosWithCurrentPrice = await Promise.all(
+      portfolios.map(async (item) => {
         try {
           const priceInfo = await api.getStockPrice(item.symbol)
+          const currentPrice = priceInfo.price
+          const totalValue = currentPrice * item.quantity
+          const profitLoss = totalValue - (item.average_price * item.quantity)
+          const profitLossPercentage = (profitLoss / (item.average_price * item.quantity)) * 100
+
           return {
             ...item,
-            current_price: priceInfo.price,
-            profit_loss: (priceInfo.price - item.average_price) * item.quantity,
-            profit_loss_percent: ((priceInfo.price / item.average_price) - 1) * 100
+            current_price: currentPrice,
+            total_value: totalValue,
+            profit_loss: profitLoss,
+            profit_loss_percentage: profitLossPercentage
           }
         } catch (error) {
-          console.error(`Error fetching price for ${item.symbol}:`, error)
+          console.error(`Failed to fetch price for ${item.symbol}:`, error)
           return item
         }
       })
     )
 
-    return NextResponse.json(portfolioWithPrices)
+    // 포트폴리오 요약 계산
+    const summary = portfoliosWithCurrentPrice.reduce(
+      (acc, item) => {
+        if (item.current_price) {
+          const investment = item.average_price * item.quantity
+          const currentValue = item.current_price * item.quantity
+          const profitLoss = currentValue - investment
+
+          acc.total_investment += investment
+          acc.total_current_value += currentValue
+          acc.total_profit_loss += profitLoss
+        }
+        return acc
+      },
+      {
+        total_investment: 0,
+        total_current_value: 0,
+        total_profit_loss: 0,
+        total_profit_loss_percentage: 0
+      }
+    )
+
+    summary.total_profit_loss_percentage = 
+      (summary.total_profit_loss / summary.total_investment) * 100
+
+    return NextResponse.json({
+      portfolios: portfoliosWithCurrentPrice,
+      summary
+    })
   } catch (error) {
-    console.error('Error fetching portfolio:', error)
+    console.error('Portfolio fetch error:', error)
     return NextResponse.json(
       { error: 'Failed to fetch portfolio' },
       { status: 500 }
