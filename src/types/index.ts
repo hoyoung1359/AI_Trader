@@ -1,11 +1,20 @@
 export interface Stock {
   symbol: string
   name: string
-  price: number
-  change: number
+  market: string
+  sector?: string
+  price?: number
+  change?: number
   volume?: number
   high?: number
   low?: number
+}
+
+export interface SearchStock {
+  symbol: string
+  name: string
+  market: string
+  sector?: string
 }
 
 export interface User {

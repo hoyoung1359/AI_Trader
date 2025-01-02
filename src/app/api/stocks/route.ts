@@ -1,25 +1,20 @@
 import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase-client'
 import { KoreaInvestmentAPI } from '@/lib/korea-investment'
+import { SearchStock, Stock } from '@/types'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('query') || ''
 
   try {
-    // 주식 마스터 데이터 검색
-    const { data: stocks, error } = await supabase
-      .from('stock_master')
-      .select('*')
-      .ilike('name', `%${query}%`)
-      .limit(20)
-
-    if (error) throw error
-
-    // 현재가 조회
     const api = new KoreaInvestmentAPI()
-    const stocksWithPrices = await Promise.all(
-      stocks.map(async (stock) => {
+    
+    // 한국투자증권 API를 통해 주식 검색
+    const stocks: SearchStock[] = await api.searchStocks(query)
+    
+    // 현재가 조회
+    const stocksWithPrices: Stock[] = await Promise.all(
+      stocks.map(async (stock: SearchStock) => {
         try {
           const priceInfo = await api.getStockPrice(stock.symbol)
           return {

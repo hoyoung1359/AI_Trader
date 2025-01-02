@@ -7,7 +7,6 @@ import { fetchStocks } from '@/services/api'
 import StockList from '@/components/StockList'
 import TradingPanel from '@/components/TradingPanel'
 import Portfolio from '@/components/Portfolio'
-import TransactionHistory from '@/components/TransactionHistory'
 import UserInfo from '@/components/UserInfo'
 
 export default function Home() {
@@ -42,39 +41,46 @@ export default function Home() {
   }
 
   return (
-    <div className="space-y-4">
-      <UserInfo userId={1} />
-      <Portfolio userId={1} />
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="border rounded p-4">
+    <div className="grid grid-cols-12 gap-6">
+      {/* 왼쪽 패널 */}
+      <div className="col-span-12 lg:col-span-8 space-y-6">
+        {/* 사용자 정보 */}
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg shadow-lg p-6 text-white">
+          <UserInfo userId={1} />
+        </div>
+
+        {/* 주식 검색 */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-bold mb-4">주식 검색</h2>
-          <div className="mb-4">
+          <div className="relative">
             <input 
               type="text" 
               value={searchQuery}
               onChange={handleSearchChange}
-              placeholder="종목 검색..."
-              className="w-full p-2 border rounded"
+              placeholder="종목명을 입력하세요..."
+              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
+            {isLoading && (
+              <div className="absolute right-3 top-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+              </div>
+            )}
           </div>
-          {isLoading ? (
-            <div className="text-center py-4">검색 중...</div>
-          ) : (
+          <div className="mt-4">
             <StockList 
               stocks={stocks} 
               onSelectStock={setSelectedStock}
             />
-          )}
-        </div>
-
-        <div className="border rounded p-4">
-          <h2 className="text-xl font-bold mb-4">가상 매매</h2>
-          <TradingPanel stock={selectedStock} />
+          </div>
         </div>
       </div>
 
-      <TransactionHistory userId={1} />
+      {/* 오른쪽 패널 */}
+      <div className="col-span-12 lg:col-span-4 space-y-6">
+        <div className="bg-white rounded-lg shadow-sm">
+          <TradingPanel stock={selectedStock} />
+        </div>
+      </div>
     </div>
   )
 } 

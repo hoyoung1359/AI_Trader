@@ -5,6 +5,13 @@ export async function GET(
   request: Request,
   { params }: { params: { symbol: string } }
 ) {
+  if (!params.symbol) {
+    return NextResponse.json(
+      { error: 'Symbol is required' },
+      { status: 400 }
+    )
+  }
+
   try {
     const api = new KoreaInvestmentAPI()
     const today = new Date()
@@ -15,10 +22,14 @@ export async function GET(
 
     const data = await api.getStockHistory(params.symbol, startDate, endDate)
     
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid data format from API')
+    }
+
     return NextResponse.json({
-      dates: data.map((item: any) => item.stck_bsop_date),
-      prices: data.map((item: any) => parseFloat(item.stck_clpr)),
-      volumes: data.map((item: any) => parseInt(item.acml_vol))
+      dates: data.map((item: any) => item.stck_bsop_date).reverse(),
+      prices: data.map((item: any) => parseFloat(item.stck_clpr)).reverse(),
+      volumes: data.map((item: any) => parseInt(item.acml_vol)).reverse()
     })
   } catch (error) {
     console.error('Error fetching stock history:', error)

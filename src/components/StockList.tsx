@@ -20,10 +20,10 @@ export default function StockList({ stocks, onSelectStock }: StockListProps) {
             <span>{stock.name} ({stock.symbol})</span>
             <div className="text-right">
               <div className={`
-                ${stock.change >= 0 ? 'text-green-600' : 'text-red-600'}
+                ${(stock.change ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}
                 font-semibold
               `}>
-                {stock.price ? stock.price.toLocaleString() : '-'} 원
+                {stock.price?.toLocaleString() ?? '-'} 원
               </div>
               <div className="text-sm text-gray-500">
                 {stock.change ? `${stock.change.toFixed(2)}%` : '-'}
