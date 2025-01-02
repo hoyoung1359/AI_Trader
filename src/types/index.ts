@@ -83,4 +83,29 @@ export interface StockHistoryItem {
   low: number
   close: number
   volume: number
-} 
+}
+
+export interface WebSocketMessage {
+  header: {
+    tr_id: string
+    content_type?: string
+  }
+  body: {
+    output: {
+      price: number
+      change: number
+      volume: number
+      symbol: string
+    }
+  }
+}
+
+export interface StockPrice {
+  price: number
+  change: number
+  volume: number
+  high: number
+  low: number
+}
+
+export type PriceCallback = (data: WebSocketMessage) => void 

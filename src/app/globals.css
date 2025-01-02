@@ -3,88 +3,62 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 245, 247, 250;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --success: #16a34a;
+  --danger: #dc2626;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+  background: var(--background);
+  color: var(--foreground);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
 }
 
 @layer components {
-  .input-icon {
-    @apply absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400;
-  }
-
-  .input-field {
-    @apply pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors;
-  }
-
-  .input-field-error {
-    @apply border-red-500;
+  .card {
+    @apply bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300;
   }
 
   .btn-primary {
-    @apply w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+    @apply px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors duration-200 
+    disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2;
   }
 
-  .form-label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+  .input-field {
+    @apply w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-primary focus:border-transparent
+    transition duration-200 bg-white/50 backdrop-blur-sm;
   }
 
-  .error-message {
-    @apply mt-1 text-sm text-red-500;
+  .glass-card {
+    @apply bg-white/30 backdrop-blur-md rounded-xl shadow-lg border border-white/20;
   }
 
-  .link-blue {
-    @apply font-medium text-blue-600 hover:text-blue-500 transition-colors;
+  .stock-up {
+    @apply text-success;
   }
-}
 
-/* 로딩 스타일 */
-.loading-spinner {
-  @apply w-5 h-5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin;
-}
+  .stock-down {
+    @apply text-danger;
+  }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-blue-500 font-bold;
   }
 }
 
-/* 기본 컨테이너 스타일 */
-.container {
-  @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+/* 애니메이션 */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
 }
 
-/* 기본 텍스트 가시성 보장 */
-.text-visible {
-  @apply text-gray-900 dark:text-white;
-}
-
-/* 주식 차트 스타일 */
-.stock-chart {
-  @apply w-full h-[400px] bg-white rounded-lg shadow-lg p-4;
-}
-
-/* 포트폴리오 카드 스타일 */
-.portfolio-card {
-  @apply bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow;
-}
-
-/* 거래 내역 테이블 스타일 */
-.transactions-table {
-  @apply min-w-full divide-y divide-gray-200;
-}
-
-.transactions-table th {
-  @apply px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
-}
-
-.transactions-table td {
-  @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 } 

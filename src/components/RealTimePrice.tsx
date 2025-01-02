@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { KoreaInvestmentAPI } from '@/lib/korea-investment'
 
 interface Props {
@@ -8,23 +8,25 @@ interface Props {
 }
 
 export default function RealTimePrice({ symbol }: Props) {
-  const [price, setPrice] = useState<number | null>(null)
-  const [change, setChange] = useState<number | null>(null)
-  const [ws, setWs] = useState<WebSocket | null>(null)
+  const [price, setPrice] = useState<number>(0)
+  const [change, setChange] = useState<number>(0)
+  const [volume, setVolume] = useState<number>(0)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const api = new KoreaInvestmentAPI()
     let websocket: WebSocket | null = null
+    const api = new KoreaInvestmentAPI()
 
     const subscribeToPrice = async () => {
       try {
         websocket = await api.subscribeToStockPrice(symbol, (data) => {
           setPrice(data.body.output.price)
           setChange(data.body.output.change)
+          setVolume(data.body.output.volume)
         })
-        setWs(websocket)
-      } catch (error) {
-        console.error('Failed to subscribe to price:', error)
+      } catch (err) {
+        setError('실시간 가격 정보를 불러오는데 실패했습니다.')
+        console.error('Real-time price error:', err)
       }
     }
 
@@ -37,20 +39,21 @@ export default function RealTimePrice({ symbol }: Props) {
     }
   }, [symbol])
 
-  if (!price) return <div>로딩 중...</div>
+  if (error) return <div className="text-red-500 text-sm">{error}</div>
 
   return (
-    <div>
-      <div className={`text-lg font-bold ${
-        change && change >= 0 ? 'text-red-600' : 'text-blue-600'
-      }`}>
+    <div className="space-y-2">
+      <div className="text-2xl font-bold">
         {price.toLocaleString()}원
       </div>
-      {change && (
-        <div className={change >= 0 ? 'text-red-600' : 'text-blue-600'}>
-          {change >= 0 ? '+' : ''}{change.toFixed(2)}%
-        </div>
-      )}
+      <div className={`flex items-center ${
+        change >= 0 ? 'text-red-600' : 'text-blue-600'
+      }`}>
+        {change >= 0 ? '▲' : '▼'} {Math.abs(change).toFixed(2)}%
+      </div>
+      <div className="text-sm text-gray-500">
+        거래량: {volume.toLocaleString()}
+      </div>
     </div>
   )
 } 

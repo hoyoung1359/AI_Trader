@@ -1,37 +1,6 @@
 import axios from 'axios'
-import { SearchStock, Stock } from '@/types'
+import { SearchStock, StockPrice, StockHistoryItem, WebSocketMessage, PriceCallback } from '@/types'
 import { Cache } from './cache'
-import { withRetry } from './retry'
-import { StockAPIError } from './errors'
-
-interface StockPrice {
-  price: number
-  change: number
-  volume: number
-  high: number
-  low: number
-}
-
-interface StockHistoryItem {
-  date: string
-  open: number
-  high: number
-  low: number
-  close: number
-  volume: number
-}
-
-interface WebSocketMessage {
-  body: {
-    output: {
-      price: number
-      change: number
-      volume: number
-    }
-  }
-}
-
-type PriceCallback = (data: WebSocketMessage) => void
 
 export class KoreaInvestmentAPI {
   private baseUrl = 'https://openapi.koreainvestment.com:9443'
@@ -39,81 +8,40 @@ export class KoreaInvestmentAPI {
   private apiKey: string
   private apiSecret: string
   private accessToken: string | null = null
-  private priceCache: Cache<StockPrice>
   private searchCache: Cache<SearchStock[]>
+  private priceCache: Cache<StockPrice>
 
   constructor() {
-    const apiKey = process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_KEY
-    const apiSecret = process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_SECRET
-
-    if (!apiKey || !apiSecret) {
-      throw new Error('Missing Korea Investment API credentials')
-    }
-
-    this.apiKey = apiKey
-    this.apiSecret = apiSecret
-
-    // 가격 정보는 1분간 캐시
-    this.priceCache = new Cache<StockPrice>(60)
-    // 검색 결과는 5분간 캐시
+    this.apiKey = process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_KEY!
+    this.apiSecret = process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_SECRET!
     this.searchCache = new Cache<SearchStock[]>(300)
+    this.priceCache = new Cache<StockPrice>(60)
   }
 
-  private async getAccessToken() {
+  private async getAccessToken(): Promise<string> {
     if (this.accessToken) return this.accessToken
 
     try {
-      const response = await axios.post(`${this.baseUrl}/oauth2/tokenP`, {
-        grant_type: 'client_credentials',
-        appkey: this.apiKey,
-        appsecret: this.apiSecret
-      })
-
-      this.accessToken = response.data.access_token
-      return this.accessToken
-    } catch (error) {
-      console.error('Failed to get access token:', error)
-      throw new Error('Failed to authenticate with Korea Investment API')
-    }
-  }
-
-  async getStockPrice(symbol: string): Promise<StockPrice> {
-    try {
-      const accessToken = await this.getAccessToken()
-      
-      const response = await axios.get(
-        `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-price`,
+      const response = await axios.post(
+        `${this.baseUrl}/oauth2/tokenP`,
         {
-          headers: {
-            'authorization': `Bearer ${accessToken}`,
-            'appkey': this.apiKey,
-            'appsecret': this.apiSecret,
-            'tr_id': 'FHKST01010100',
-            'content-type': 'application/json'
-          },
-          params: {
-            FID_COND_MRKT_DIV_CODE: 'J',
-            FID_INPUT_ISCD: symbol
-          }
+          grant_type: 'client_credentials',
+          appkey: this.apiKey,
+          appsecret: this.apiSecret
         }
       )
 
-      const output = response.data.output
-
-      if (!output) {
-        throw new Error('No price data received')
+      if (!response.data.access_token) {
+        throw new Error('No access token received')
       }
 
-      return {
-        price: parseFloat(output.stck_prpr) || 0,
-        change: parseFloat(output.prdy_ctrt) || 0,
-        volume: parseInt(output.acml_vol) || 0,
-        high: parseFloat(output.high) || 0,
-        low: parseFloat(output.low) || 0
-      }
+      const token = response.data.access_token as string
+      this.accessToken = token
+      return token
+
     } catch (error) {
-      console.error('Error fetching stock price:', error)
-      throw error
+      console.error('Token error:', error)
+      throw new Error('Failed to get access token')
     }
   }
 
@@ -124,32 +52,39 @@ export class KoreaInvestmentAPI {
 
     try {
       const accessToken = await this.getAccessToken()
-      
-      const response = await axios.get(`${this.baseUrl}/uapi/domestic-stock/v1/quotations/search-info`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'authorization': `Bearer ${accessToken}`,
-          'appkey': this.apiKey,
-          'appsecret': this.apiSecret,
-          'tr_id': 'CTPF1604R'
-        },
-        params: {
-          AUTH: '',
-          EXCD: '01',
-          SYMB: query,
-          GUBN: '0',
-          BYMD: new Date().toISOString().slice(0, 10).replace(/-/g, '')
-        }
-      })
 
-      if (!response.data.output || !Array.isArray(response.data.output)) {
+      // 1. 종목 검색
+      const searchResponse = await axios.get(
+        `${this.baseUrl}/uapi/domestic-stock/v1/quotations/search-info`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'authorization': `Bearer ${accessToken}`,
+            'appkey': this.apiKey,
+            'appsecret': this.apiSecret,
+            'tr_id': 'CTPF1604R', // 주식 종목 검색 TR ID
+            'custtype': 'P'
+          },
+          params: {
+            AUTH: '',
+            EXCD: 'KRX',  // KRX 전체
+            SYMB: query,  // 검색어
+            GUBN: '0',    // 전체
+            BYMD: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
+          }
+        }
+      )
+
+      if (!searchResponse.data.output || !Array.isArray(searchResponse.data.output)) {
+        console.warn('Invalid search response:', searchResponse.data)
         return []
       }
 
+      // 2. 검색된 종목들의 현재가 조회
       const stocks = await Promise.all(
-        response.data.output
+        searchResponse.data.output
           .filter((item: any) => item.SYMB && item.KORN)
-          .map(async (item: any): Promise<SearchStock> => {
+          .map(async (item: any) => {
             try {
               const priceResponse = await axios.get(
                 `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-price`,
@@ -168,26 +103,24 @@ export class KoreaInvestmentAPI {
                 }
               )
 
-              const priceInfo = priceResponse.data.output
+              const price = priceResponse.data.output
 
               return {
                 symbol: item.SYMB,
                 name: item.KORN,
                 market: item.EXCD === '01' ? 'KOSPI' : 'KOSDAQ',
-                sector: item.SECT || '',
-                price: parseFloat(priceInfo.stck_prpr) || 0,
-                change: parseFloat(priceInfo.prdy_ctrt) || 0,
-                volume: parseInt(priceInfo.acml_vol) || 0,
-                high: parseFloat(priceInfo.stck_hgpr) || 0,
-                low: parseFloat(priceInfo.stck_lwpr) || 0
+                price: Number(price.stck_prpr) || 0,
+                change: Number(price.prdy_ctrt) || 0,
+                volume: Number(price.acml_vol) || 0,
+                high: Number(price.stck_hgpr) || 0,
+                low: Number(price.stck_lwpr) || 0
               }
             } catch (error) {
-              console.error(`Error fetching price for ${item.SYMB}:`, error)
+              console.error(`Price fetch error for ${item.SYMB}:`, error)
               return {
                 symbol: item.SYMB,
                 name: item.KORN,
-                market: item.EXCD === '01' ? 'KOSPI' : 'KOSDAQ',
-                sector: item.SECT || ''
+                market: item.EXCD === '01' ? 'KOSPI' : 'KOSDAQ'
               }
             }
           })
@@ -195,14 +128,70 @@ export class KoreaInvestmentAPI {
 
       this.searchCache.set(cacheKey, stocks)
       return stocks
+
     } catch (error) {
-      throw new StockAPIError('Failed to search stocks')
+      console.error('Stock search error:', error)
+      if (axios.isAxiosError(error)) {
+        console.error('API Response:', error.response?.data)
+      }
+      throw error
+    }
+  }
+
+  async getStockPrice(symbol: string): Promise<StockPrice> {
+    // 캐시 확인
+    const cacheKey = `price:${symbol}`
+    const cached = this.priceCache.get(cacheKey)
+    if (cached) return cached
+
+    try {
+      const accessToken = await this.getAccessToken()
+      
+      const response = await axios.get(
+        `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-price`,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            'authorization': `Bearer ${accessToken}`,
+            'appkey': this.apiKey,
+            'appsecret': this.apiSecret,
+            'tr_id': 'FHKST01010100'
+          },
+          params: {
+            FID_COND_MRKT_DIV_CODE: 'J',
+            FID_INPUT_ISCD: symbol
+          }
+        }
+      )
+
+      if (!response.data.output) {
+        throw new Error('No price data received')
+      }
+
+      const priceInfo: StockPrice = {
+        price: Number(response.data.output.stck_prpr) || 0,
+        change: Number(response.data.output.prdy_ctrt) || 0,
+        volume: Number(response.data.output.acml_vol) || 0,
+        high: Number(response.data.output.stck_hgpr) || 0,
+        low: Number(response.data.output.stck_lwpr) || 0
+      }
+
+      // 캐시에 저장
+      this.priceCache.set(cacheKey, priceInfo)
+      return priceInfo
+
+    } catch (error) {
+      console.error('Error fetching stock price:', error)
+      if (axios.isAxiosError(error)) {
+        console.error('API Response:', error.response?.data)
+      }
+      throw new Error('Failed to fetch stock price')
     }
   }
 
   async getStockHistory(
-    symbol: string, 
-    startDate: string, 
+    symbol: string,
+    startDate: string,
     endDate: string
   ): Promise<StockHistoryItem[]> {
     try {
@@ -212,11 +201,12 @@ export class KoreaInvestmentAPI {
         `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-daily-price`,
         {
           headers: {
+            'Content-Type': 'application/json',
             'authorization': `Bearer ${accessToken}`,
             'appkey': this.apiKey,
             'appsecret': this.apiSecret,
             'tr_id': 'FHKST01010400',
-            'content-type': 'application/json'
+            'custtype': 'P'
           },
           params: {
             FID_COND_MRKT_DIV_CODE: 'J',
@@ -230,28 +220,37 @@ export class KoreaInvestmentAPI {
       )
 
       if (!response.data.output || !Array.isArray(response.data.output)) {
+        console.warn('Invalid history response:', response.data)
         return []
       }
 
       return response.data.output.map((item: any) => ({
         date: item.stck_bsop_date,
-        open: parseFloat(item.stck_oprc) || 0,
-        high: parseFloat(item.stck_hgpr) || 0,
-        low: parseFloat(item.stck_lwpr) || 0,
-        close: parseFloat(item.stck_clpr) || 0,
-        volume: parseInt(item.acml_vol) || 0
+        open: Number(item.stck_oprc) || 0,
+        high: Number(item.stck_hgpr) || 0,
+        low: Number(item.stck_lwpr) || 0,
+        close: Number(item.stck_clpr) || 0,
+        volume: Number(item.acml_vol) || 0
       }))
+
     } catch (error) {
       console.error('Error fetching stock history:', error)
+      if (axios.isAxiosError(error)) {
+        console.error('API Response:', error.response?.data)
+      }
       throw new Error('Failed to fetch stock history')
     }
   }
 
-  async subscribeToStockPrice(symbol: string, callback: PriceCallback) {
+  async subscribeToStockPrice(symbol: string, callback: PriceCallback): Promise<WebSocket> {
     try {
       const accessToken = await this.getAccessToken()
       
-      const ws = new window.WebSocket(this.wsUrl)
+      if (typeof window === 'undefined') {
+        throw new Error('WebSocket is only available in browser environment')
+      }
+
+      const ws = new WebSocket(this.wsUrl)
 
       ws.onopen = () => {
         const subscribeMessage = {
@@ -274,8 +273,8 @@ export class KoreaInvestmentAPI {
 
       ws.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data) as WebSocketMessage
-          callback(message)
+          const data = JSON.parse(event.data) as WebSocketMessage
+          callback(data)
         } catch (error) {
           console.error('WebSocket message parse error:', error)
         }

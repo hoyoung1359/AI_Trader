@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createBrowserClient } from '@supabase/ssr'
-import { HiOutlineMail, HiOutlineLockClosed } from 'react-icons/hi'
+import { HiOutlineMail, HiOutlineLockClosed, HiChartBar, HiCurrencyDollar } from 'react-icons/hi'
 import Link from 'next/link'
+import Image from 'next/image'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -42,67 +43,96 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            로그인
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            또는{' '}
-            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-              회원가입
-            </Link>
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
-          <div className="rounded-md shadow-sm -space-y-px">
-            <div className="relative">
-              <HiOutlineMail className="absolute left-3 top-3 text-gray-400" />
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-10 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="이메일"
-              />
-            </div>
-            <div className="relative">
-              <HiOutlineLockClosed className="absolute left-3 top-3 text-gray-400" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="appearance-none rounded-none relative block w-full px-10 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="비밀번호"
-              />
-            </div>
+    <div className="min-h-screen flex">
+      {/* 왼쪽 섹션 - 로그인 폼 */}
+      <div className="w-full md:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold gradient-text mb-2">
+              Virtual Trader
+            </h1>
+            <p className="text-gray-600">
+              가상 주식 거래로 실전 투자를 연습해보세요
+            </p>
           </div>
 
-          {error && (
-            <div className="text-red-500 text-sm text-center">{error}</div>
-          )}
+          <form className="mt-8 space-y-6 glass-card p-8" onSubmit={handleLogin}>
+            <div className="space-y-4">
+              <div className="relative">
+                <HiOutlineMail className="absolute left-3 top-3 text-gray-400" />
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-field pl-10"
+                  placeholder="이메일"
+                />
+              </div>
+              <div className="relative">
+                <HiOutlineLockClosed className="absolute left-3 top-3 text-gray-400" />
+                <input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-field pl-10"
+                  placeholder="비밀번호"
+                />
+              </div>
+            </div>
 
-          <div>
+            {error && (
+              <div className="text-danger text-sm text-center">{error}</div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+              className="btn-primary w-full"
             >
               {isLoading ? '로그인 중...' : '로그인'}
             </button>
-          </div>
 
-          <div className="flex items-center justify-end">
-            <div className="text-sm">
-              <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                비밀번호를 잊으셨나요?
+            <div className="flex items-center justify-between text-sm">
+              <Link href="/register" className="text-primary hover:underline">
+                회원가입
+              </Link>
+              <Link href="/forgot-password" className="text-primary hover:underline">
+                비밀번호 찾기
               </Link>
             </div>
+          </form>
+        </div>
+      </div>
+
+      {/* 오른쪽 섹션 - 데코레이션 */}
+      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-primary to-blue-600 items-center justify-center p-8">
+        <div className="text-white space-y-8">
+          <div className="space-y-4 text-center">
+            <h2 className="text-3xl font-bold">실전 투자 연습의 시작</h2>
+            <p className="text-lg opacity-90">
+              실시간 시장 데이터로 투자 전략을 테스트해보세요
+            </p>
           </div>
-        </form>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div className="glass-card p-6 animate-float">
+              <HiChartBar className="w-8 h-8 mb-2" />
+              <h3 className="font-bold mb-1">실시간 차트</h3>
+              <p className="text-sm opacity-80">
+                실시간 주가 변동을 분석하세요
+              </p>
+            </div>
+            <div className="glass-card p-6 animate-float" style={{ animationDelay: '0.5s' }}>
+              <HiCurrencyDollar className="w-8 h-8 mb-2" />
+              <h3 className="font-bold mb-1">포트폴리오 관리</h3>
+              <p className="text-sm opacity-80">
+                투자 성과를 한눈에 확인하세요
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
