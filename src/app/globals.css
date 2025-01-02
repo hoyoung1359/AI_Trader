@@ -15,19 +15,40 @@ body {
   flex-direction: column;
 }
 
-/* 로딩 스타일 */
-.loading {
-  @apply inline-block rounded-full border-4;
-  border-color: #e5e7eb;
-  border-top-color: #3b82f6;
-  animation: spin 1s linear infinite;
-  width: 2.5rem;
-  height: 2.5rem;
+@layer components {
+  .input-icon {
+    @apply absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400;
+  }
+
+  .input-field {
+    @apply pl-10 w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors;
+  }
+
+  .input-field-error {
+    @apply border-red-500;
+  }
+
+  .btn-primary {
+    @apply w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+  }
+
+  .form-label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+
+  .error-message {
+    @apply mt-1 text-sm text-red-500;
+  }
+
+  .link-blue {
+    @apply font-medium text-blue-600 hover:text-blue-500 transition-colors;
+  }
 }
 
-.loading-lg {
-  width: 4rem;
-  height: 4rem;
+/* 로딩 스타일 */
+.loading-spinner {
+  @apply h-5 w-5 border-2 border-white border-t-transparent rounded-full;
+  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
