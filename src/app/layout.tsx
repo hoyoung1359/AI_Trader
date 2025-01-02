@@ -29,20 +29,20 @@ function MainLayout({ children }: { children: React.ReactNode }) {
     </div>
   }
 
-  // 로그인하지 않은 경우 로그인 페이지로 리다이렉트
-  if (!user && pathname !== '/login') {
+  // 로그인하지 않은 경우 로그인/회원가입 페이지는 그대로 표시
+  if (!user && !['/login', '/register'].includes(pathname)) {
     router.push('/login')
     return null
   }
 
-  // 로그인 페이지에서 이미 로그인한 경우 홈으로 리다이렉트
-  if (user && pathname === '/login') {
+  // 로그인한 경우 로그인/회원가입 페이지 접근 시 홈으로 리다이렉트
+  if (user && ['/login', '/register'].includes(pathname)) {
     router.push('/')
     return null
   }
 
-  // 로그인 페이지일 때는 사이드바 없이 표시
-  if (pathname === '/login') {
+  // 로그인/회원가입 페이지일 때는 사이드바 없이 표시
+  if (['/login', '/register'].includes(pathname)) {
     return children
   }
 
