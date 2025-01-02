@@ -129,18 +129,24 @@ export class KoreaInvestmentAPI {
         }
       })
 
-      if (!response.data.output) {
+      if (!response.data.output || !Array.isArray(response.data.output)) {
+        console.warn('Invalid response format:', response.data)
         return []
       }
 
-      return response.data.output.map((item: any): SearchStock => ({
-        symbol: item.SYMB || '',
-        name: item.KORN || '',
-        market: item.EXCD === '01' ? 'KOSPI' : 'KOSDAQ',
-        sector: item.SECT || ''
-      }))
+      return response.data.output
+        .filter((item: any) => item.SYMB && item.KORN)
+        .map((item: any): SearchStock => ({
+          symbol: item.SYMB,
+          name: item.KORN,
+          market: item.EXCD === '01' ? 'KOSPI' : 'KOSDAQ',
+          sector: item.SECT || ''
+        }))
     } catch (error) {
       console.error('Stock search error:', error)
+      if (axios.isAxiosError(error)) {
+        console.error('API Response:', error.response?.data)
+      }
       throw new Error('Failed to search stocks')
     }
   }

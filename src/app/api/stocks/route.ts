@@ -1,42 +1,31 @@
 import { NextResponse } from 'next/server'
 import { KoreaInvestmentAPI } from '@/lib/korea-investment'
-import { SearchStock, Stock } from '@/types'
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const query = searchParams.get('query') || ''
-
   try {
-    const api = new KoreaInvestmentAPI()
-    
-    // 한국투자증권 API를 통해 주식 검색
-    const stocks: SearchStock[] = await api.searchStocks(query)
-    
-    // 현재가 조회
-    const stocksWithPrices: Stock[] = await Promise.all(
-      stocks.map(async (stock: SearchStock) => {
-        try {
-          const priceInfo = await api.getStockPrice(stock.symbol)
-          return {
-            ...stock,
-            price: priceInfo.price,
-            change: priceInfo.change,
-            volume: priceInfo.volume,
-            high: priceInfo.high,
-            low: priceInfo.low
-          }
-        } catch (error) {
-          console.error(`Error fetching price for ${stock.symbol}:`, error)
-          return stock
-        }
-      })
-    )
+    const { searchParams } = new URL(request.url)
+    const query = searchParams.get('query')
 
-    return NextResponse.json(stocksWithPrices)
+    if (!query) {
+      return NextResponse.json(
+        { error: 'Search query is required' },
+        { status: 400 }
+      )
+    }
+
+    const api = new KoreaInvestmentAPI()
+    const results = await api.searchStocks(query)
+
+    // 검색 결과가 없는 경우 빈 배열 반환
+    if (!results || results.length === 0) {
+      return NextResponse.json([])
+    }
+
+    return NextResponse.json(results)
   } catch (error) {
-    console.error('Error searching stocks:', error)
+    console.error('Stock search error:', error)
     return NextResponse.json(
-      { error: 'Failed to search stocks' },
+      { error: 'Failed to search stocks', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

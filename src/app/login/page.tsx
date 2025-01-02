@@ -2,111 +2,102 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { createBrowserClient } from '@supabase/ssr'
+import { HiOutlineMail, HiOutlineLockClosed } from 'react-icons/hi'
 import Link from 'next/link'
-import { useAuth } from '@/contexts/AuthContext'
-import { HiOutlineMail, HiOutlineLockClosed, HiOutlineExclamationCircle } from 'react-icons/hi'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { signIn } = useAuth()
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  )
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
 
     try {
-      await signIn(email, password)
-      router.push('/')
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) throw error
+
+      router.push('/dashboard')
+      router.refresh()
     } catch (err) {
-      setError('이메일 또는 비밀번호가 올바르지 않습니다.')
+      setError('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.')
+      console.error('Login error:', err)
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
-      <div className="max-w-md w-full m-4 space-y-8 p-10 bg-white rounded-xl shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
         <div>
-          <h1 className="text-4xl font-bold text-center text-gray-900 mb-2">
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             로그인
-          </h1>
-          <p className="text-center text-gray-600">
-            주식 가상매매 시뮬레이터에 오신 것을 환영합니다
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            또는{' '}
+            <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
+              회원가입
+            </Link>
           </p>
         </div>
-
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="form-label">이메일</label>
-              <div className="relative">
-                <div className="input-icon">
-                  <HiOutlineMail className="h-5 w-5" />
-                </div>
-                <input
-                  id="email"
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="input-field"
-                  placeholder="your@email.com"
-                />
-              </div>
+        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div className="relative">
+              <HiOutlineMail className="absolute left-3 top-3 text-gray-400" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="appearance-none rounded-none relative block w-full px-10 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="이메일"
+              />
             </div>
-
-            <div>
-              <label htmlFor="password" className="form-label">비밀번호</label>
-              <div className="relative">
-                <div className="input-icon">
-                  <HiOutlineLockClosed className="h-5 w-5" />
-                </div>
-                <input
-                  id="password"
-                  type="password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="input-field"
-                  placeholder="••••••••"
-                />
-              </div>
+            <div className="relative">
+              <HiOutlineLockClosed className="absolute left-3 top-3 text-gray-400" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="appearance-none rounded-none relative block w-full px-10 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
+                placeholder="비밀번호"
+              />
             </div>
           </div>
 
           {error && (
-            <div className="flex items-center gap-2 text-red-500 text-sm bg-red-50 p-3 rounded-lg">
-              <HiOutlineExclamationCircle className="h-5 w-5 flex-shrink-0" />
-              <p>{error}</p>
-            </div>
+            <div className="text-red-500 text-sm text-center">{error}</div>
           )}
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="btn-primary"
-          >
-            {isLoading ? (
-              <div className="loading-spinner" />
-            ) : (
-              '로그인'
-            )}
-          </button>
+          <div>
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+            >
+              {isLoading ? '로그인 중...' : '로그인'}
+            </button>
+          </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-end">
             <div className="text-sm">
-              <Link href="/register" className="link-blue">
-                계정이 없으신가요?
-              </Link>
-            </div>
-            <div className="text-sm">
-              <Link href="/forgot-password" className="link-blue">
+              <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
                 비밀번호를 잊으셨나요?
               </Link>
             </div>

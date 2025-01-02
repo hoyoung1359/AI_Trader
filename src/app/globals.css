@@ -47,8 +47,7 @@ body {
 
 /* 로딩 스타일 */
 .loading-spinner {
-  @apply h-5 w-5 border-2 border-white border-t-transparent rounded-full;
-  animation: spin 1s linear infinite;
+  @apply w-5 h-5 border-2 border-gray-200 border-t-blue-500 rounded-full animate-spin;
 }
 
 @keyframes spin {
@@ -65,4 +64,27 @@ body {
 /* 기본 텍스트 가시성 보장 */
 .text-visible {
   @apply text-gray-900 dark:text-white;
+}
+
+/* 주식 차트 스타일 */
+.stock-chart {
+  @apply w-full h-[400px] bg-white rounded-lg shadow-lg p-4;
+}
+
+/* 포트폴리오 카드 스타일 */
+.portfolio-card {
+  @apply bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow;
+}
+
+/* 거래 내역 테이블 스타일 */
+.transactions-table {
+  @apply min-w-full divide-y divide-gray-200;
+}
+
+.transactions-table th {
+  @apply px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+}
+
+.transactions-table td {
+  @apply px-6 py-4 whitespace-nowrap text-sm text-gray-900;
 } 
