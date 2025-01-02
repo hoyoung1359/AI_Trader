@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useState } from 'react'
 import {
   Chart as ChartJS,
@@ -8,11 +10,12 @@ import {
   Title,
   Tooltip,
   Legend,
-  BarElement
+  BarElement,
+  ChartOptions,
+  ChartData
 } from 'chart.js'
 import { Line, Bar } from 'react-chartjs-2'
 
-// Chart.js 등록
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -24,7 +27,7 @@ ChartJS.register(
   Legend
 )
 
-interface ChartData {
+interface ChartDataType {
   dates: string[]
   prices: number[]
   volumes: number[]
@@ -36,42 +39,100 @@ interface StockChartProps {
 }
 
 export default function StockChart({ symbol, name }: StockChartProps) {
-  const [chartData, setChartData] = useState<ChartData | null>(null)
+  const [chartData, setChartData] = useState<ChartDataType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchChartData()
+    const fetchChartData = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const response = await fetch(`/api/stocks/${symbol}/history`)
+        if (!response.ok) throw new Error('차트 데이터 로딩 실패')
+        const data = await response.json()
+        if (!data.dates || !data.prices || !data.volumes) {
+          throw new Error('잘못된 데이터 형식')
+        }
+        setChartData(data)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '알 수 없는 오류')
+        console.error('차트 데이터 로딩 실패:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (symbol) {
+      fetchChartData()
+    }
   }, [symbol])
 
-  const fetchChartData = async () => {
-    try {
-      const response = await fetch(`/api/stocks/${symbol}/history`)
-      if (!response.ok) throw new Error('Failed to fetch chart data')
-      const data = await response.json()
-      setChartData(data)
-    } catch (error) {
-      console.error('차트 데이터 로딩 실패:', error)
-    } finally {
-      setIsLoading(false)
+  if (isLoading) return <div className="p-4 text-center">차트 로딩 중...</div>
+  if (error) return <div className="p-4 text-red-500">{error}</div>
+  if (!chartData) return null
+
+  const commonOptions = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: true,
+        text: `${name} (${symbol})`
+      }
     }
   }
 
-  if (isLoading) return <div>차트 로딩 중...</div>
-  if (!chartData) return <div>차트 데이터를 불러올 수 없습니다.</div>
+  const priceChartOptions: ChartOptions<'line'> = {
+    ...commonOptions,
+    scales: {
+      y: {
+        type: 'linear' as const,
+        display: true,
+        position: 'left' as const,
+        ticks: {
+          callback: (value) => `${value.toLocaleString()}원`
+        }
+      }
+    },
+    interaction: {
+      mode: 'index' as const,
+      intersect: false,
+    }
+  }
 
-  const priceChartData = {
+  const volumeChartOptions: ChartOptions<'bar'> = {
+    ...commonOptions,
+    scales: {
+      y: {
+        type: 'linear' as const,
+        display: true,
+        position: 'left' as const,
+        beginAtZero: true,
+        ticks: {
+          callback: (value) => value.toLocaleString()
+        }
+      }
+    }
+  }
+
+  const priceChartData: ChartData<'line'> = {
     labels: chartData.dates,
     datasets: [
       {
         label: '주가',
         data: chartData.prices,
         borderColor: 'rgb(75, 192, 192)',
-        tension: 0.1
+        backgroundColor: 'rgba(75, 192, 192, 0.5)',
+        tension: 0.1,
+        pointRadius: 1
       }
     ]
   }
 
-  const volumeChartData = {
+  const volumeChartData: ChartData<'bar'> = {
     labels: chartData.dates,
     datasets: [
       {
@@ -84,28 +145,13 @@ export default function StockChart({ symbol, name }: StockChartProps) {
 
   return (
     <div className="space-y-4">
-      <div className="border rounded p-4">
-        <h3 className="text-lg font-semibold mb-4">{name} 주가 차트</h3>
-        <Line 
-          data={priceChartData}
-          options={{
-            responsive: true,
-            scales: {
-              y: {
-                beginAtZero: false
-              }
-            }
-          }}
-        />
+      <div className="border rounded p-4 bg-white">
+        <Line data={priceChartData} options={priceChartOptions} />
       </div>
-
-      <div className="border rounded p-4">
-        <h3 className="text-lg font-semibold mb-4">거래량</h3>
+      <div className="border rounded p-4 bg-white">
         <Bar 
           data={volumeChartData}
-          options={{
-            responsive: true
-          }}
+          options={volumeChartOptions}
         />
       </div>
     </div>
