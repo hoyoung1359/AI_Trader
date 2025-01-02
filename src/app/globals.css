@@ -99,7 +99,8 @@ body {
   }
 
   .loading {
-    @apply animate-spin rounded-full border-4 border-gray-200;
+    @apply inline-block rounded-full border-4 border-t-blue-500 border-gray-200;
+    animation: spin 1s linear infinite;
   }
 
   .loading-sm {
@@ -111,7 +112,7 @@ body {
   }
 
   .loading-lg {
-    @apply w-12 h-12 border-t-blue-500;
+    @apply w-12 h-12;
   }
 }
 
@@ -166,4 +167,20 @@ body {
   .text-price {
     @apply font-medium;
   }
+}
+
+/* 로딩 애니메이션 */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading {
+  @apply inline-block rounded-full border-4 border-t-blue-500 border-gray-200;
+  animation: spin 1s linear infinite;
+}
+
+.loading-lg {
+  @apply w-12 h-12;
 } 
