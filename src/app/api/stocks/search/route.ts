@@ -4,19 +4,19 @@ import { KoreaInvestmentAPI } from '@/lib/korea-investment'
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const query = searchParams.get('q')
+    const query = searchParams.get('query')
 
     if (!query) {
-      return NextResponse.json(
-        { error: 'Search query is required' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 })
     }
 
     const api = new KoreaInvestmentAPI()
-    const results = await api.searchStocks(query)
+    const stocks = await api.searchStocks(query)
 
-    return NextResponse.json(results)
+    // 검색 결과 로깅
+    console.log('Search results:', stocks)
+
+    return NextResponse.json(stocks)
   } catch (error) {
     console.error('Stock search error:', error)
     return NextResponse.json(
