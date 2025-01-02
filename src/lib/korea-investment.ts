@@ -1,5 +1,8 @@
 import axios from 'axios'
 import { SearchStock, Stock } from '@/types'
+import { Cache } from './cache'
+import { withRetry } from './retry'
+import { StockAPIError } from './errors'
 
 interface StockPrice {
   price: number
@@ -36,6 +39,8 @@ export class KoreaInvestmentAPI {
   private apiKey: string
   private apiSecret: string
   private accessToken: string | null = null
+  private priceCache: Cache<StockPrice>
+  private searchCache: Cache<SearchStock[]>
 
   constructor() {
     const apiKey = process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_KEY
@@ -47,6 +52,11 @@ export class KoreaInvestmentAPI {
 
     this.apiKey = apiKey
     this.apiSecret = apiSecret
+
+    // 가격 정보는 1분간 캐시
+    this.priceCache = new Cache<StockPrice>(60)
+    // 검색 결과는 5분간 캐시
+    this.searchCache = new Cache<SearchStock[]>(300)
   }
 
   private async getAccessToken() {
@@ -108,6 +118,10 @@ export class KoreaInvestmentAPI {
   }
 
   async searchStocks(query: string): Promise<SearchStock[]> {
+    const cacheKey = `search:${query}`
+    const cached = this.searchCache.get(cacheKey)
+    if (cached) return cached
+
     try {
       const accessToken = await this.getAccessToken()
       
@@ -124,30 +138,65 @@ export class KoreaInvestmentAPI {
           EXCD: '01',
           SYMB: query,
           GUBN: '0',
-          BYMD: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
-          MODP: '0'
+          BYMD: new Date().toISOString().slice(0, 10).replace(/-/g, '')
         }
       })
 
       if (!response.data.output || !Array.isArray(response.data.output)) {
-        console.warn('Invalid response format:', response.data)
         return []
       }
 
-      return response.data.output
-        .filter((item: any) => item.SYMB && item.KORN)
-        .map((item: any): SearchStock => ({
-          symbol: item.SYMB,
-          name: item.KORN,
-          market: item.EXCD === '01' ? 'KOSPI' : 'KOSDAQ',
-          sector: item.SECT || ''
-        }))
+      const stocks = await Promise.all(
+        response.data.output
+          .filter((item: any) => item.SYMB && item.KORN)
+          .map(async (item: any): Promise<SearchStock> => {
+            try {
+              const priceResponse = await axios.get(
+                `${this.baseUrl}/uapi/domestic-stock/v1/quotations/inquire-price`,
+                {
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'authorization': `Bearer ${accessToken}`,
+                    'appkey': this.apiKey,
+                    'appsecret': this.apiSecret,
+                    'tr_id': 'FHKST01010100'
+                  },
+                  params: {
+                    FID_COND_MRKT_DIV_CODE: 'J',
+                    FID_INPUT_ISCD: item.SYMB
+                  }
+                }
+              )
+
+              const priceInfo = priceResponse.data.output
+
+              return {
+                symbol: item.SYMB,
+                name: item.KORN,
+                market: item.EXCD === '01' ? 'KOSPI' : 'KOSDAQ',
+                sector: item.SECT || '',
+                price: parseFloat(priceInfo.stck_prpr) || 0,
+                change: parseFloat(priceInfo.prdy_ctrt) || 0,
+                volume: parseInt(priceInfo.acml_vol) || 0,
+                high: parseFloat(priceInfo.stck_hgpr) || 0,
+                low: parseFloat(priceInfo.stck_lwpr) || 0
+              }
+            } catch (error) {
+              console.error(`Error fetching price for ${item.SYMB}:`, error)
+              return {
+                symbol: item.SYMB,
+                name: item.KORN,
+                market: item.EXCD === '01' ? 'KOSPI' : 'KOSDAQ',
+                sector: item.SECT || ''
+              }
+            }
+          })
+      )
+
+      this.searchCache.set(cacheKey, stocks)
+      return stocks
     } catch (error) {
-      console.error('Stock search error:', error)
-      if (axios.isAxiosError(error)) {
-        console.error('API Response:', error.response?.data)
-      }
-      throw new Error('Failed to search stocks')
+      throw new StockAPIError('Failed to search stocks')
     }
   }
 

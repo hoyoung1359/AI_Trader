@@ -1,4 +1,4 @@
-export interface Stock {
+export interface SearchStock {
   symbol: string
   name: string
   market: string
@@ -10,11 +10,12 @@ export interface Stock {
   low?: number
 }
 
-export interface SearchStock {
-  symbol: string
-  name: string
-  market: string
-  sector?: string
+export interface Stock extends SearchStock {
+  price: number
+  change: number
+  volume: number
+  high: number
+  low: number
 }
 
 export interface User {
@@ -32,25 +33,47 @@ export interface TradeRequest {
 }
 
 export interface Portfolio {
-  id: number
-  user_id: number
+  id: string
+  userId: string
+  stocks: {
+    symbol: string
+    shares: number
+    averagePrice: number
+  }[]
+  cash: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface Transaction {
+  id: string
+  userId: string
   symbol: string
-  name: string
-  quantity: number
-  average_price: number
-  current_price?: number
-  total_value?: number
-  profit_loss?: number
-  profit_loss_percentage?: number
-  created_at: string
-  updated_at: string
+  type: 'buy' | 'sell'
+  shares: number
+  price: number
+  total: number
+  timestamp: string
+}
+
+export interface PortfolioPerformance {
+  date: string
+  totalValue: number
+  cash: number
+  stocks: {
+    symbol: string
+    shares: number
+    price: number
+    value: number
+  }[]
 }
 
 export interface PortfolioSummary {
-  total_investment: number
-  total_current_value: number
-  total_profit_loss: number
-  total_profit_loss_percentage: number
+  totalInvestment: number
+  totalValue: number
+  totalProfitLoss: number
+  profitLossPercentage: number
+  cash: number
 }
 
 export interface StockHistoryItem {
