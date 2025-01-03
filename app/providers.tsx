@@ -1,8 +1,9 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { supabase } from '@/utils/supabase-client'
 import { StockItem } from '@/types/stock'
+import LoadingSpinner from '@/components/LoadingSpinner'
 
 interface StockContextType {
   stocks: StockItem[]
@@ -19,16 +20,19 @@ const initialState: StockContextType = {
 const StockContext = createContext<StockContextType>(initialState)
 
 export function StockProvider({ children }: { children: ReactNode }) {
+  const [mounted, setMounted] = useState(false)
   const [state, setState] = useState<StockContextType>(initialState)
 
   useEffect(() => {
-    let mounted = true
+    setMounted(true)
+    
+    let isActive = true
 
     const fetchStocks = async () => {
       try {
         const { data, error } = await supabase.from('stocks').select('*')
         
-        if (!mounted) return
+        if (!isActive) return
         
         if (error) throw error
         
@@ -38,7 +42,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
           loading: false
         }))
       } catch (error) {
-        if (!mounted) return
+        if (!isActive) return
         
         console.error('데이터 불러오기 실패:', error)
         setState(prev => ({
@@ -52,14 +56,16 @@ export function StockProvider({ children }: { children: ReactNode }) {
     fetchStocks()
 
     return () => {
-      mounted = false
+      isActive = false
     }
   }, [])
 
-  const value = useMemo(() => state, [state])
+  if (!mounted) {
+    return <LoadingSpinner />
+  }
 
   return (
-    <StockContext.Provider value={value}>
+    <StockContext.Provider value={state}>
       {children}
     </StockContext.Provider>
   )

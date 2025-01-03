@@ -1,24 +1,18 @@
 'use client'
 
-import { Suspense } from 'react'
 import dynamic from 'next/dynamic'
+import LoadingSpinner from './LoadingSpinner'
+import ClientProvider from '@/app/ClientProvider'
 
 const StockSearchPage = dynamic(() => import('./StockSearchPage'), {
-  loading: () => (
-    <div className="flex justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-    </div>
-  )
+  ssr: false,
+  loading: () => <LoadingSpinner />
 })
 
 export default function StockSearchWrapper() {
   return (
-    <Suspense fallback={
-      <div className="flex justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-      </div>
-    }>
+    <ClientProvider>
       <StockSearchPage />
-    </Suspense>
-  )
+    </ClientProvider>
+  );
 } 

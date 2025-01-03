@@ -1,5 +1,19 @@
-import StockDetailWrapper from '@/components/StockDetailWrapper'
+import dynamic from 'next/dynamic';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-export default function Page({ params }: { params: { code: string } }) {
-  return <StockDetailWrapper code={params.code} />
+const StockDetailWrapper = dynamic(
+  () => import('@/components/StockDetailWrapper'),
+  {
+    ssr: false,
+    loading: () => <LoadingSpinner />
+  }
+);
+
+type Props = {
+  params: { code: string }
+  searchParams: { [key: string]: string | string[] | undefined }
+}
+
+export default function StockPage({ params }: Props) {
+  return <StockDetailWrapper code={params.code} />;
 } 

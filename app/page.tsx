@@ -1,5 +1,14 @@
-import StockSearchWrapper from '@/components/StockSearchWrapper'
+import dynamic from 'next/dynamic';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
-export default function Home() {
-  return <StockSearchWrapper />
+const StockSearchWrapper = dynamic(
+  () => import('@/components/StockSearchWrapper'),
+  {
+    ssr: false,
+    loading: () => <LoadingSpinner />
+  }
+);
+
+export default function Page() {
+  return <StockSearchWrapper />;
 } 
