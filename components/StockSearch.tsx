@@ -1,7 +1,7 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
+import StockSearchContent from './StockSearchContent';
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
@@ -17,15 +17,6 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
     </div>
   );
 }
-
-const StockSearchContent = dynamic(() => import('./StockSearchContent'), {
-  ssr: false,
-  loading: () => (
-    <div className="flex justify-center">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-    </div>
-  ),
-});
 
 export default function StockSearch() {
   return (

@@ -1,16 +1,5 @@
-import dynamic from 'next/dynamic'
-
-const StockSearch = dynamic(() => import('@/components/StockSearch'), {
-  ssr: false
-})
+import StockSearchWrapper from '@/components/StockSearchWrapper'
 
 export default function Home() {
-  return (
-    <main className="container mx-auto px-4">
-      <div className="max-w-4xl mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-8 text-center">코스피 종목 검색</h1>
-        <StockSearch />
-      </div>
-    </main>
-  )
+  return <StockSearchWrapper />
 } 

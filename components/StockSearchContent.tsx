@@ -4,8 +4,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase-client';
 import { StockItem } from '@/types/stock';
 import debounce from 'lodash/debounce';
+import { useRouter } from 'next/navigation';
 
 export default function StockSearchContent() {
+  const router = useRouter();
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [filteredStocks, setFilteredStocks] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,10 @@ export default function StockSearchContent() {
     setFilteredStocks(filtered);
   }, 300);
 
+  const handleStockClick = (code: string) => {
+    router.push(`/stock/${code}`);
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto">
       <div className="mb-4">
@@ -72,7 +78,7 @@ export default function StockSearchContent() {
             <div 
               key={stock.code}
               className="p-4 border rounded-lg hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => console.log('Selected stock:', stock)}
+              onClick={() => handleStockClick(stock.code)}
             >
               <h3 className="font-bold text-lg">{stock.name}</h3>
               <div className="mt-2 space-y-1">

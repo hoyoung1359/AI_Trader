@@ -1,5 +1,6 @@
 import './globals.css'
 import type { Metadata } from 'next'
+import { StockProvider } from './providers'
 
 export const metadata: Metadata = {
   title: 'Virtual Trader',
@@ -13,7 +14,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <div suppressHydrationWarning>
+          <StockProvider>
+            {children}
+          </StockProvider>
+        </div>
+      </body>
     </html>
   )
 } 
