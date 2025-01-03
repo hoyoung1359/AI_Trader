@@ -4,8 +4,24 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase-client';
 import { StockItem } from '@/types/stock';
 import debounce from 'lodash/debounce';
+import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
 
-export default function StockSearch() {
+function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+  return (
+    <div className="text-center p-4">
+      <h2 className="text-red-500 font-bold mb-4">문제가 발생했습니다</h2>
+      <pre className="text-sm mb-4">{error.message}</pre>
+      <button
+        onClick={resetErrorBoundary}
+        className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+      >
+        다시 시도
+      </button>
+    </div>
+  );
+}
+
+function StockSearchContent() {
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [filteredStocks, setFilteredStocks] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -92,5 +108,13 @@ export default function StockSearch() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function StockSearch() {
+  return (
+    <ErrorBoundary FallbackComponent={ErrorFallback}>
+      <StockSearchContent />
+    </ErrorBoundary>
   );
 } 
