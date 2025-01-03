@@ -1,4 +1,11 @@
 {
+  "components\\StockSearch.tsx -> ./StockSearchContent": {
+    "id": 1682,
+    "files": [
+      "static/chunks/267.dd645411a33bcaa3.js",
+      "static/chunks/682.7d7bb57239895693.js"
+    ]
+  },
   "node_modules\\@supabase\\auth-js\\dist\\module\\lib\\helpers.js -> @supabase/node-fetch": {
     "id": 485,
     "files": []
