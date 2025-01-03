@@ -3,6 +3,12 @@ const nextConfig = {
   reactStrictMode: true,
   images: {
     domains: ['uypvrugprpujbbaudtoi.supabase.co'], // Supabase 스토리지 도메인
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
   async headers() {
     return [
