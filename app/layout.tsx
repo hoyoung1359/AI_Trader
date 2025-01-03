@@ -3,7 +3,7 @@ import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
   title: 'Virtual Trader',
-  description: '주식 가상매매 프로그램',
+  description: 'KOSPI 주식 거래 시뮬레이터',
 }
 
 export default function RootLayout({

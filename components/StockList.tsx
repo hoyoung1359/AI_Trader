@@ -1,51 +1,52 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/utils/supabase-client';
-import { StockItem } from '@/types/stock';
-import debounce from 'lodash/debounce';
+import { useState, useEffect } from 'react'
+import { supabase } from '@/utils/supabase'
+import { StockItem } from '@/types/stock'
+import debounce from 'lodash/debounce'
 
-export default function StockSearch() {
-  const [stocks, setStocks] = useState<StockItem[]>([]);
-  const [filteredStocks, setFilteredStocks] = useState<StockItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [error, setError] = useState<string | null>(null);
+export default function StockList() {
+  const [stocks, setStocks] = useState<StockItem[]>([])
+  const [filteredStocks, setFilteredStocks] = useState<StockItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchStocks();
-  }, []);
+    fetchStocks()
+  }, [])
 
   const fetchStocks = async () => {
     try {
       const { data, error } = await supabase
         .from('stocks')
-        .select('*');
+        .select('*')
       
-      if (error) throw error;
-      setStocks(data || []);
-      setFilteredStocks(data || []);
+      if (error) throw error
+      console.log('불러온 주식 데이터:', data)
+      setStocks(data || [])
+      setFilteredStocks(data || [])
     } catch (error) {
-      console.error('데이터 불러오기 실패:', error);
-      setError('주식 데이터를 불러오는데 실패했습니다.');
+      console.error('데이터 불러오기 실패:', error)
+      setError('주식 데이터를 불러오는데 실패했습니다.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const handleSearch = debounce((term: string) => {
-    setSearchTerm(term);
+    setSearchTerm(term)
     if (!term.trim()) {
-      setFilteredStocks(stocks);
-      return;
+      setFilteredStocks(stocks)
+      return
     }
 
     const filtered = stocks.filter(stock => 
       stock.name.toLowerCase().includes(term.toLowerCase()) ||
       stock.code.includes(term)
-    );
-    setFilteredStocks(filtered);
-  }, 300);
+    )
+    setFilteredStocks(filtered)
+  }, 300)
 
   return (
     <div className="w-full max-w-4xl mx-auto">
@@ -92,5 +93,5 @@ export default function StockSearch() {
         </div>
       )}
     </div>
-  );
+  )
 } 

@@ -1,6 +1,8 @@
-'use client'
+import dynamic from 'next/dynamic'
 
-import StockSearch from '@/components/StockSearch'
+const StockSearch = dynamic(() => import('@/components/StockSearch'), {
+  ssr: false
+})
 
 export default function Home() {
   return (

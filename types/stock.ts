@@ -5,15 +5,13 @@ export interface KISToken {
 }
 
 export interface StockItem {
-  종목코드: string;
-  종목명: string;
-  현재가: number;
-  전일대비: number;
-  등락률: number;
-  거래량: number;
-  시가: number;
-  고가: number;
-  저가: number;
+  code: string;
+  name: string;
+  market: string;
+  sector: string;
+  last_price: number;
+  change_rate: number;
+  updated_at: string;
 }
 
 export interface SearchResponse {
