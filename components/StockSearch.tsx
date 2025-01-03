@@ -5,6 +5,7 @@ import { supabase } from '@/utils/supabase-client';
 import { StockItem } from '@/types/stock';
 import debounce from 'lodash/debounce';
 import { ErrorBoundary, FallbackProps } from 'react-error-boundary';
+import dynamic from 'next/dynamic';
 
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
@@ -21,7 +22,9 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   );
 }
 
-function StockSearchContent() {
+const StockSearchContent = () => {
+  'use client';
+  
   const [stocks, setStocks] = useState<StockItem[]>([]);
   const [filteredStocks, setFilteredStocks] = useState<StockItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -109,12 +112,16 @@ function StockSearchContent() {
       )}
     </div>
   );
-}
+};
+
+const StockSearchWithNoSSR = dynamic(() => Promise.resolve(StockSearchContent), {
+  ssr: false
+});
 
 export default function StockSearch() {
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
-      <StockSearchContent />
+      <StockSearchWithNoSSR />
     </ErrorBoundary>
   );
 } 
