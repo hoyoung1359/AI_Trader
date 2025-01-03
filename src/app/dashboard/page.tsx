@@ -1,67 +1,76 @@
 'use client'
 
 import { useState } from 'react'
+import { Stock } from '@/types'
 import StockSearch from '@/components/StockSearch'
 import { HiChartBar, HiCurrencyDollar, HiLightningBolt, HiTrendingUp } from 'react-icons/hi'
 
 export default function DashboardPage() {
+  const [selectedStock, setSelectedStock] = useState<Stock | null>(null)
+
+  const handleSelectStock = (stock: Stock) => {
+    setSelectedStock(stock)
+    // 추가적인 대시보드 로직 구현 가능
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold gradient-text">
-          AI 기반 주식 거래 플랫폼
-        </h1>
-        <p className="text-gray-600 mt-2">
-          실시간 시장 데이터와 AI 분석을 통한 스마트 투자
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="glass-card p-6">
-          <div className="flex items-center mb-4">
-            <HiChartBar className="w-6 h-6 text-blue-500" />
-            <h2 className="ml-2 font-semibold">실시간 시장 동향</h2>
+        <h1 className="text-2xl font-bold mb-4">대시보드</h1>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center text-blue-500 mb-2">
+              <HiCurrencyDollar className="text-xl" />
+              <span className="ml-2">보유 현금</span>
+            </div>
+            <p className="text-2xl font-bold">0원</p>
           </div>
-          <p className="text-sm text-gray-600">
-            KOSPI, KOSDAQ 실시간 모니터링
-          </p>
-        </div>
-
-        <div className="glass-card p-6">
-          <div className="flex items-center mb-4">
-            <HiLightningBolt className="w-6 h-6 text-yellow-500" />
-            <h2 className="ml-2 font-semibold">AI 투자 분석</h2>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center text-green-500 mb-2">
+              <HiChartBar className="text-xl" />
+              <span className="ml-2">총 자산</span>
+            </div>
+            <p className="text-2xl font-bold">0원</p>
           </div>
-          <p className="text-sm text-gray-600">
-            머신러닝 기반 종목 분석
-          </p>
-        </div>
-
-        <div className="glass-card p-6">
-          <div className="flex items-center mb-4">
-            <HiCurrencyDollar className="w-6 h-6 text-green-500" />
-            <h2 className="ml-2 font-semibold">포트폴리오 관리</h2>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center text-purple-500 mb-2">
+              <HiTrendingUp className="text-xl" />
+              <span className="ml-2">수익률</span>
+            </div>
+            <p className="text-2xl font-bold">0%</p>
           </div>
-          <p className="text-sm text-gray-600">
-            실시간 수익률 모니터링
-          </p>
-        </div>
-
-        <div className="glass-card p-6">
-          <div className="flex items-center mb-4">
-            <HiTrendingUp className="w-6 h-6 text-purple-500" />
-            <h2 className="ml-2 font-semibold">거래 시뮬레이션</h2>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center text-yellow-500 mb-2">
+              <HiLightningBolt className="text-xl" />
+              <span className="ml-2">거래량</span>
+            </div>
+            <p className="text-2xl font-bold">0건</p>
           </div>
-          <p className="text-sm text-gray-600">
-            가상 투자로 전략 테스트
-          </p>
         </div>
       </div>
 
       <div className="glass-card p-6 mb-8">
         <h2 className="text-xl font-bold mb-4">종목 검색</h2>
-        <StockSearch />
+        <StockSearch onSelectStock={handleSelectStock} />
       </div>
+
+      {selectedStock && (
+        <div className="glass-card p-6">
+          <h2 className="text-xl font-bold mb-4">선택된 종목 정보</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <h3 className="font-bold text-lg">{selectedStock.name}</h3>
+              <p className="text-gray-600">{selectedStock.symbol}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-bold">{selectedStock.price.toLocaleString()}원</p>
+              <p className={`${selectedStock.change >= 0 ? 'text-red-500' : 'text-blue-500'}`}>
+                {selectedStock.change >= 0 ? '+' : ''}{selectedStock.change}%
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 차트 및 분석 섹션 추가 예정 */}
     </div>

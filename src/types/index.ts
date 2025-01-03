@@ -1,7 +1,7 @@
-export interface SearchStock {
+// 기본 주식 정보 인터페이스
+interface BaseStock {
   symbol: string
   name: string
-  market: string
   sector?: string
   price?: number
   change?: number
@@ -10,12 +10,17 @@ export interface SearchStock {
   low?: number
 }
 
-export interface Stock extends SearchStock {
+// 검색 결과용 인터페이스
+export interface SearchStock extends BaseStock {
+  market: string
+}
+
+// 거래용 주식 정보 인터페이스
+export interface Stock extends BaseStock {
+  marketCap: number
+  volume: number
   price: number
   change: number
-  volume: number
-  high: number
-  low: number
 }
 
 export interface User {

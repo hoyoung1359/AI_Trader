@@ -290,4 +290,37 @@ export class KoreaInvestmentAPI {
       throw new Error('Failed to subscribe to stock price')
     }
   }
+
+  async getKospiStocks() {
+    try {
+      const accessToken = await this.getAccessToken()
+      
+      const response = await axios.get(
+        `${this.baseUrl}/uapi/domestic-stock/v1/quotations/kospi-quotations`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            appkey: this.apiKey,
+            appsecret: this.apiSecret,
+            tr_id: 'HHDFS00000300'
+          }
+        }
+      )
+
+      // 응답 데이터 변환
+      return response.data.output.map((item: any) => ({
+        symbol: item.mksc_shrn_iscd,
+        name: item.hts_kor_isnm,
+        sector: item.bstp_kor_isnm,
+        marketCap: parseInt(item.mrkt_cap),
+        volume: parseInt(item.acc_trdvol),
+        price: parseInt(item.stck_prpr),
+        change: parseFloat(item.prdy_ctrt)
+      }))
+
+    } catch (error) {
+      console.error('Failed to fetch KOSPI stocks:', error)
+      throw new Error('Failed to fetch KOSPI stocks')
+    }
+  }
 } 

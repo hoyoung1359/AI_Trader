@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { KoreaInvestmentAPI } from '@/lib/korea-investment'
+import { SearchStock } from '@/types'
 
 export async function GET(request: Request) {
   try {
@@ -7,20 +8,28 @@ export async function GET(request: Request) {
     const query = searchParams.get('query')
 
     if (!query) {
-      return NextResponse.json({ error: 'Query parameter is required' }, { status: 400 })
+      return NextResponse.json({ error: '검색어를 입력해주세요.' }, { status: 400 })
     }
 
     const api = new KoreaInvestmentAPI()
-    const stocks = await api.searchStocks(query)
+    const searchResults = await api.searchStocks(query)
 
-    // 검색 결과 로깅
-    console.log('Search results:', stocks)
+    // SearchStock 타입으로 변환
+    const stocks: SearchStock[] = searchResults.map(item => ({
+      symbol: item.symbol,
+      name: item.name,
+      market: item.market,
+      sector: item.sector,
+      price: item.price,
+      change: item.change,
+      volume: item.volume
+    }))
 
     return NextResponse.json(stocks)
   } catch (error) {
-    console.error('Stock search error:', error)
+    console.error('Search error:', error)
     return NextResponse.json(
-      { error: 'Failed to search stocks' },
+      { error: '검색 중 오류가 발생했습니다.' },
       { status: 500 }
     )
   }
