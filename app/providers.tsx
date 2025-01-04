@@ -1,10 +1,11 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { supabase } from '@/utils/supabase-client'
+import { supabase } from '@/utils/supabase'
 import { StockItem } from '@/types/stock'
 import LoadingSpinner from '@/components/LoadingSpinner'
 
+// Stock Context 타입 정의
 interface StockContextType {
   stocks: StockItem[]
   loading: boolean
@@ -19,7 +20,7 @@ const initialState: StockContextType = {
 
 const StockContext = createContext<StockContextType>(initialState)
 
-export function StockProvider({ children }: { children: ReactNode }) {
+export function Providers({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false)
   const [state, setState] = useState<StockContextType>(initialState)
 
@@ -71,6 +72,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
   )
 }
 
+// Stock Context를 사용하기 위한 훅
 export function useStock() {
   const context = useContext(StockContext)
   if (!context) {
