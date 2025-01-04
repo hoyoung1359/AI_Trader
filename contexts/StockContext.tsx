@@ -1,47 +1,73 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useState, useEffect, ReactNode, Suspense } from 'react'
 import { supabase } from '@/utils/supabase-client'
 import { StockItem } from '@/types/stock'
+import LoadingSpinner from '@/components/LoadingSpinner'
 
 interface StockContextType {
   stocks: StockItem[]
   loading: boolean
   error: string | null
-  fetchStocks: () => Promise<void>
 }
 
-const StockContext = createContext<StockContextType | null>(null)
+const defaultState: StockContextType = {
+  stocks: [],
+  loading: true,
+  error: null
+}
 
-export function StockProvider({ children }: { children: ReactNode }) {
-  const [stocks, setStocks] = useState<StockItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const StockContext = createContext<StockContextType>(defaultState)
 
-  const fetchStocks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('stocks')
-        .select('*')
-      
-      if (error) throw error
-      setStocks(data || [])
-    } catch (error) {
-      console.error('데이터 불러오기 실패:', error)
-      setError('주식 데이터를 불러오는데 실패했습니다.')
-    } finally {
-      setLoading(false)
-    }
-  }
+function StockProviderInner({ children }: { children: ReactNode }) {
+  const [data, setData] = useState<StockContextType>(defaultState)
 
   useEffect(() => {
-    fetchStocks()
+    let mounted = true
+
+    async function loadStocks() {
+      try {
+        const { data: stocks, error } = await supabase.from('stocks').select('*')
+        
+        if (!mounted) return
+        
+        if (error) throw error
+
+        setData({
+          stocks: stocks || [],
+          loading: false,
+          error: null
+        })
+      } catch (error) {
+        if (!mounted) return
+        console.error('Failed to load stocks:', error)
+        setData(prev => ({
+          ...prev,
+          loading: false,
+          error: '주식 데이터를 불러오는데 실패했습니다.'
+        }))
+      }
+    }
+
+    loadStocks()
+
+    return () => {
+      mounted = false
+    }
   }, [])
 
   return (
-    <StockContext.Provider value={{ stocks, loading, error, fetchStocks }}>
-      {children}
+    <StockContext.Provider value={data}>
+      {data.loading ? <LoadingSpinner /> : children}
     </StockContext.Provider>
+  )
+}
+
+export function StockProvider({ children }: { children: ReactNode }) {
+  return (
+    <Suspense fallback={<LoadingSpinner />}>
+      <StockProviderInner>{children}</StockProviderInner>
+    </Suspense>
   )
 }
 

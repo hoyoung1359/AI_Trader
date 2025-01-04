@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/utils/supabase-client'
 import { StockItem } from '@/types/stock'
+import LoadingSpinner from './LoadingSpinner'
 
 export default function StockDetail({ code }: { code: string }) {
   const [stock, setStock] = useState<StockItem | null>(null)
@@ -10,7 +11,9 @@ export default function StockDetail({ code }: { code: string }) {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    async function fetchStockDetail() {
+    let mounted = true
+
+    const fetchStockDetail = async () => {
       try {
         const { data, error } = await supabase
           .from('stocks')
@@ -18,20 +21,26 @@ export default function StockDetail({ code }: { code: string }) {
           .eq('code', code)
           .single()
 
+        if (!mounted) return
         if (error) throw error
         setStock(data)
       } catch (error) {
-        console.error('상세 정보 로드 실패:', error)
-        setError('주식 정보를 불러오는데 실패했습니다.')
+        if (mounted) {
+          console.error('상세 정보 로드 실패:', error)
+          setError('주식 정보를 불러오는데 실패했습니다.')
+        }
       } finally {
-        setLoading(false)
+        if (mounted) {
+          setLoading(false)
+        }
       }
     }
 
     fetchStockDetail()
+    return () => { mounted = false }
   }, [code])
 
-  if (loading) return <div>로딩 중...</div>
+  if (loading) return <LoadingSpinner />
   if (error) return <div className="text-red-500">{error}</div>
   if (!stock) return <div>종목을 찾을 수 없습니다.</div>
 

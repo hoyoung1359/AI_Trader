@@ -13,9 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body suppressHydrationWarning={true}>
-        {children}
-      </body>
+      <body>{children}</body>
     </html>
   )
 } 
