@@ -1,0 +1,15 @@
+{
+  "crons": [{
+    "path": "/api/stocks/sync",
+    "schedule": "0 0 * * *"
+  }],
+  "functions": {
+    "app/api/stocks/sync/route.ts": {
+      "memory": 1024,
+      "maxDuration": 60
+    }
+  },
+  "buildCommand": "npm run build",
+  "installCommand": "npm install",
+  "framework": "nextjs"
+} 
