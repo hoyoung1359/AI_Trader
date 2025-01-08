@@ -52,7 +52,7 @@ export default function StockChart({ stockCode, stockName }: StockChartProps) {
   const processChartData = (data: ChartDataItem[]): ProcessedDataItem[] => {
     return data
       .map(item => ({
-        time: item.date,  // YYYYMMDD 형식 문자열 그대로 사용
+        time: `${item.date.slice(0, 4)}-${item.date.slice(4, 6)}-${item.date.slice(6, 8)}`,
         open: item.시가,
         high: item.고가,
         low: item.저가,

@@ -1,4 +1,4 @@
-// File: C:\Coding\ai_trader\src\app\stocks\[code]\page.tsx
+// File: C:\Coding\AI-Trader\src\app\stocks\[code]\page.tsx
 import * as entry from '../../../../../src/app/stocks/[code]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

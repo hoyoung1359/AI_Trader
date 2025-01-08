@@ -1,4 +1,4 @@
-// File: C:\Coding\ai_trader\src\app\layout.tsx
+// File: C:\Coding\AI-Trader\src\app\layout.tsx
 import * as entry from '../../../src/app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

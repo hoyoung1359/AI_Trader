@@ -1,10 +1,12 @@
 {
-  "/api/stocks/technical/route": "app/api/stocks/technical/route.js",
+  "/_not-found/page": "app/_not-found/page.js",
   "/api/stocks/chart/route": "app/api/stocks/chart/route.js",
-  "/api/stocks/volume/route": "app/api/stocks/volume/route.js",
-  "/api/trading/account/route": "app/api/trading/account/route.js",
   "/api/trading/holdings/[stockCode]/route": "app/api/trading/holdings/[stockCode]/route.js",
-  "/api/ai/predict/[stockCode]/route": "app/api/ai/predict/[stockCode]/route.js",
+  "/api/trading/account/route": "app/api/trading/account/route.js",
   "/api/stocks/prices/route": "app/api/stocks/prices/route.js",
+  "/api/stocks/technical/route": "app/api/stocks/technical/route.js",
+  "/api/stocks/volume/route": "app/api/stocks/volume/route.js",
+  "/api/ai/predict/[stockCode]/route": "app/api/ai/predict/[stockCode]/route.js",
+  "/page": "app/page.js",
   "/stocks/[code]/page": "app/stocks/[code]/page.js"
 }

@@ -1,4 +1,4 @@
-// File: C:\Coding\ai_trader\src\app\api\ai\predict\[stockCode]\route.ts
+// File: C:\Coding\AI-Trader\src\app\api\ai\predict\[stockCode]\route.ts
 import * as entry from '../../../../../../../src/app/api/ai/predict/[stockCode]/route.js'
 import type { NextRequest } from 'next/server.js'
 
