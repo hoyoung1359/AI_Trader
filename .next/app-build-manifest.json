@@ -6,6 +6,21 @@
       "static/css/app/layout.css",
       "static/chunks/app/layout.js"
     ],
+    "/api/auth/me/route": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/api/auth/me/route.js"
+    ],
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
+    ],
+    "/dashboard/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/page.js"
+    ],
     "/api/stocks/chart/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
@@ -16,40 +31,10 @@
       "static/chunks/main-app.js",
       "static/chunks/app/api/trading/account/route.js"
     ],
-    "/api/stocks/prices/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/stocks/prices/route.js"
-    ],
     "/api/trading/holdings/[stockCode]/route": [
       "static/chunks/webpack.js",
       "static/chunks/main-app.js",
       "static/chunks/app/api/trading/holdings/[stockCode]/route.js"
-    ],
-    "/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/page.js"
-    ],
-    "/api/stocks/technical/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/stocks/technical/route.js"
-    ],
-    "/api/stocks/volume/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/stocks/volume/route.js"
-    ],
-    "/api/ai/predict/[stockCode]/route": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/api/ai/predict/[stockCode]/route.js"
-    ],
-    "/stocks/[code]/page": [
-      "static/chunks/webpack.js",
-      "static/chunks/main-app.js",
-      "static/chunks/app/stocks/[code]/page.js"
     ],
     "/_not-found/page": [
       "static/chunks/webpack.js",

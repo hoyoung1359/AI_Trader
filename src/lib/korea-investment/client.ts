@@ -94,13 +94,19 @@ export async function getKospiStockList(): Promise<KospiStock[]> {
 async function getValidTokenFromDB() {
   try {
     const { data, error } = await supabase
-      .rpc('get_valid_token');
+      .from('access_tokens')
+      .select('*')
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
 
-    if (error) throw error;
-    if (data && data.length > 0) {
-      return data[0].token;
+    if (error) {
+      console.error('DB token fetch error:', error);
+      return null;
     }
-    return null;
+
+    return data?.token || null;
   } catch (error) {
     console.error('Error getting token from DB:', error);
     return null;
@@ -109,6 +115,12 @@ async function getValidTokenFromDB() {
 
 async function saveTokenToDB(token: string, expiresIn: number) {
   try {
+    // 먼저 기존 토큰들을 모두 삭제
+    await supabase
+      .from('access_tokens')
+      .delete()
+      .lt('expires_at', new Date().toISOString());
+
     const expiresAt = new Date(Date.now() + (expiresIn * 1000));
     
     const { error } = await supabase
@@ -116,28 +128,30 @@ async function saveTokenToDB(token: string, expiresIn: number) {
       .insert([
         {
           token,
-          expires_at: expiresAt.toISOString()
+          expires_at: expiresAt.toISOString(),
+          created_at: new Date().toISOString()
         }
       ]);
 
     if (error) throw error;
   } catch (error) {
     console.error('Error saving token to DB:', error);
+    throw error;
   }
 }
 
 export async function getAccessToken(): Promise<string> {
   try {
-    // DB에서 유효한 토큰 확인
+    // 1. DB에서 유효한 토큰 확인
     const cachedToken = await getValidTokenFromDB();
     if (cachedToken) {
+      console.log('Using cached token');
       return cachedToken;
     }
 
-    // 토큰 발급 요청 전 1초 대기
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log('Requesting new token...');
 
-    // 새 토큰 발급
+    // 2. 새 토큰 발급
     const response = await fetch(`${BASE_URL}/oauth2/tokenP`, {
       method: 'POST',
       headers: {
@@ -151,23 +165,15 @@ export async function getAccessToken(): Promise<string> {
     });
 
     const data = await response.json();
+    console.log('Token API Response:', data);
     
-    if (!response.ok || data.error_code) {
-      if (data.error_code === 'EGW00133') {
-        // 1분 대기 후 재시도
-        await new Promise(resolve => setTimeout(resolve, 60 * 1000));
-        return getAccessToken(); // 재귀적 재시도
-      }
+    if (!response.ok || !data.access_token) {
+      console.error('Token API Error:', data);
       throw new Error(data.error_description || 'Failed to get access token');
     }
 
-    // 새 토큰을 DB에 저장
-    try {
-      await saveTokenToDB(data.access_token, data.expires_in);
-    } catch (error) {
-      console.error('Error saving token to DB:', error);
-      // DB 저장 실패해도 토큰은 반환
-    }
+    // 3. 새 토큰을 DB에 저장
+    await saveTokenToDB(data.access_token, data.expires_in || 86400);
     
     return data.access_token;
   } catch (error) {
@@ -210,16 +216,16 @@ export async function getKospiStocks(stockCode: string): Promise<StockResponse> 
   }
 }
 
-interface ChartData {
+interface ChartDataItem {
   stck_bsop_date: string;  // 거래일자
-  stck_clpr: string;       // 종가
   stck_oprc: string;       // 시가
   stck_hgpr: string;       // 고가
   stck_lwpr: string;       // 저가
+  stck_clpr: string;       // 종가
   acml_vol: string;        // 거래량
 }
 
-async function getChartFromDB(stockCode: string, period: ChartPeriod): Promise<ChartData[] | null> {
+async function getChartFromDB(stockCode: string, period: ChartPeriod): Promise<ChartDataItem[] | null> {
   try {
     const { data, error } = await supabase
       .from('stock_charts')
@@ -237,7 +243,7 @@ async function getChartFromDB(stockCode: string, period: ChartPeriod): Promise<C
   }
 }
 
-async function saveChartToDB(stockCode: string, period: ChartPeriod, chartData: ChartData[]) {
+async function saveChartToDB(stockCode: string, period: ChartPeriod, chartData: ChartDataItem[]) {
   try {
     const { error } = await supabase
       .from('stock_charts')
@@ -256,54 +262,131 @@ async function saveChartToDB(stockCode: string, period: ChartPeriod, chartData: 
   }
 }
 
-export async function getStockChart(
-  stockCode: string, 
-  period: ChartPeriod = '1M'
-): Promise<ChartData[]> {
+export async function getStockChart(code: string, period: string) {
   try {
     const token = await getAccessToken();
-    const params = getPeriodParams(period, stockCode);
-    
-    const url = new URL(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-price`);
-    Object.entries(params).forEach(([key, value]) => {
-      url.searchParams.append(key, value.toString());
+    console.log('Using token:', token);
+
+    const params = new URLSearchParams({
+      FID_COND_MRKT_DIV_CODE: 'J',
+      FID_INPUT_ISCD: code,
+      FID_INPUT_DATE_1: getPeriodStartDate(period),
+      FID_INPUT_DATE_2: getTodayDate(),
+      FID_PERIOD_DIV_CODE: 'D',
+      FID_ORG_ADJ_PRC: '1'
     });
 
-    const response = await fetch(url.toString(), {
-      headers: {
-        'content-type': 'application/json',
-        'authorization': `Bearer ${token}`,
-        'appkey': process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_KEY!,
-        'appsecret': process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_SECRET!,
-        'tr_id': 'FHKST01010400',
-        'custtype': 'P',
-      },
-      cache: 'no-store'
+    const url = `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-price?${params}`;
+    
+    const headers = {
+      'content-type': 'application/json',
+      'authorization': `Bearer ${token}`,
+      'appkey': process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_KEY!,
+      'appsecret': process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_SECRET!,
+      'tr_id': 'FHKST03010100',
+      'custtype': 'P',
+    };
+
+    console.log('Request URL:', url);
+    console.log('Request headers:', headers);
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers
     });
 
     if (!response.ok) {
+      console.error('Chart API Error:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+      
+      const errorData = await response.json().catch(() => null);
+      console.error('Error response data:', errorData);
+      
+      if (errorData?.msg_cd === 'EGW00121') {
+        // 토큰이 유효하지 않은 경우, DB에서 토큰 삭제 후 재시도
+        await supabase
+          .from('access_tokens')
+          .delete()
+          .gt('created_at', '1970-01-01');
+        
+        // 재귀적으로 한 번만 재시도
+        return getStockChart(code, period);
+      }
+      
       throw new Error(`API request failed: ${response.status}`);
     }
 
     const data = await response.json();
     
-    if (!data.output || !Array.isArray(data.output)) {
-      throw new Error('Invalid API response format');
+    if (!data.output2 || !Array.isArray(data.output2)) {
+      console.error('Invalid chart data format:', data);
+      throw new Error('Invalid chart data format');
     }
 
-    return data.output.map((item: any) => ({
+    // 차트 데이터 포맷 변환
+    const chartData = data.output2.map((item: ChartDataItem) => ({
       date: item.stck_bsop_date,
-      시가: parseFloat(item.stck_oprc),
-      고가: parseFloat(item.stck_hgpr),
-      저가: parseFloat(item.stck_lwpr),
-      종가: parseFloat(item.stck_clpr),
-      거래량: parseInt(item.acml_vol),
+      open: Number(item.stck_oprc),
+      high: Number(item.stck_hgpr),
+      low: Number(item.stck_lwpr),
+      close: Number(item.stck_clpr),
+      volume: Number(item.acml_vol)
     }));
 
+    return {
+      ...data,
+      output: chartData.reverse() // 날짜 오름차순으로 정렬
+    };
   } catch (error) {
-    console.error('Error fetching chart data:', error);
+    console.error('Error in getStockChart:', error);
     throw error;
   }
+}
+
+// 오늘 날짜를 YYYYMMDD 형식으로 반환
+function getTodayDate(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
+}
+
+// 기간에 따른 시작일을 YYYYMMDD 형식으로 반환
+function getPeriodStartDate(period: string): string {
+  const today = new Date();
+  let startDate = new Date();
+
+  switch (period) {
+    case '1D':
+      startDate = new Date(today);
+      break;
+    case '1W':
+      startDate.setDate(today.getDate() - 7);
+      break;
+    case '1M':
+      startDate.setMonth(today.getMonth() - 1);
+      break;
+    case '3M':
+      startDate.setMonth(today.getMonth() - 3);
+      break;
+    case '6M':
+      startDate.setMonth(today.getMonth() - 6);
+      break;
+    case '1Y':
+      startDate.setFullYear(today.getFullYear() - 1);
+      break;
+    default:
+      startDate.setMonth(today.getMonth() - 1); // 기본값 1개월
+  }
+
+  const year = startDate.getFullYear();
+  const month = String(startDate.getMonth() + 1).padStart(2, '0');
+  const day = String(startDate.getDate()).padStart(2, '0');
+  return `${year}${month}${day}`;
 }
 
 function getPeriodParams(period: ChartPeriod, stockCode: string) {

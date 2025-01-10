@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
 import { WebSocketMessage, StockRealtime } from '@/types/websocket';
+import { getAccessToken } from '@/lib/korea-investment/client';
 // /src/lib/korea-investment/client.ts
 
 export const getWebSocketToken = async () => {
-  // 실제 토큰 발급 로직 구현
-  // 한국투자증권 API를 호출하여 웹소켓 토큰을 받아오는 로직
-  return "your_websocket_token";
+  try {
+    const token = await getAccessToken();
+    return token;
+  } catch (error) {
+    console.error('Error getting WebSocket token:', error);
+    throw error;
+  }
 };
 
 export const getWebSocketURL = () => {
-  // 웹소켓 URL 반환
-  return "wss://your.websocket.url";
+  return process.env.NEXT_PUBLIC_KOREA_INVESTMENT_WS_URL || "wss://openapi.koreainvestment.com:21000";
 };
 
 export const createWebSocketMessage = (token: string, stockCode: string) => {
