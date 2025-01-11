@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,7 +9,8 @@ const supabase = createClient(
 
 export async function POST(request: Request) {
   try {
-    const token = request.headers.get('Authorization')?.replace('Bearer ', '');
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
 
     if (!token) {
       return NextResponse.json(
@@ -17,20 +19,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // 토큰으로 사용자 ID 조회
-    const { data: tokenData, error: tokenError } = await supabase
+    // DB에서 토큰 삭제
+    const { error: deleteError } = await supabase
       .from('access_tokens')
-      .select('user_id')
-      .eq('token', token)
-      .single();
+      .delete()
+      .eq('token', token);
 
-    if (tokenError || !tokenData) {
-      console.error('토큰 조회 실패:', tokenError);
-    } else {
-      // 로그아웃 함수 호출
-      await supabase.rpc('logout_user', {
-        p_user_id: tokenData.user_id
-      });
+    if (deleteError) {
+      console.error('토큰 삭제 실패:', deleteError);
+      return NextResponse.json(
+        { error: '로그아웃 처리 중 오류가 발생했습니다' },
+        { status: 500 }
+      );
     }
 
     // 쿠키 삭제

@@ -4,6 +4,7 @@ import "./globals.css";
 import Providers from "./providers";
 import { AuthProvider } from "@/providers/AuthProvider";
 import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,9 +25,12 @@ export default function RootLayout({
           <AuthProvider>
             <div className="flex">
               <Sidebar />
-              <main className="flex-1 ml-64 min-h-screen bg-gray-50">
-                {children}
-              </main>
+              <div className="flex-1 ml-64">
+                <Header />
+                <main className="min-h-screen bg-gray-50">
+                  {children}
+                </main>
+              </div>
             </div>
           </AuthProvider>
         </Providers>

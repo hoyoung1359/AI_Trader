@@ -31,11 +31,18 @@ export default function Sidebar() {
   ];
 
   const handleLogout = async () => {
-    await logout();
-    // 로그아웃 후 사용자 정보 쿼리 무효화
-    queryClient.invalidateQueries({ queryKey: ['user'] });
-    queryClient.setQueryData(['user'], null);
-    router.push('/');
+    try {
+      await logout();
+      // 로그아웃 후 사용자 정보 쿼리 무효화
+      queryClient.invalidateQueries({ queryKey: ['user'] });
+      queryClient.setQueryData(['user'], null);
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
+    }
+  };
+
+  const handleLoginClick = () => {
+    router.push('/login');
   };
 
   const isAuthenticated = user || authUser;
@@ -76,20 +83,20 @@ export default function Sidebar() {
                 className="flex items-center space-x-2 p-3 rounded-lg w-full text-red-600 hover:bg-red-50"
               >
                 <span>🚪</span>
-                <span>Logout</span>
+                <span>로그아웃</span>
               </button>
             </div>
           </>
         ) : (
           // 로그아웃 상태일 때의 메뉴
           <div className="space-y-2">
-            <Link
-              href="/login"
+            <button
+              onClick={handleLoginClick}
               className="flex items-center space-x-2 p-3 rounded-lg w-full text-indigo-600 hover:bg-indigo-50"
             >
               <span>🔑</span>
               <span>로그인/회원가입</span>
-            </Link>
+            </button>
           </div>
         )}
       </div>

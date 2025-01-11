@@ -3,10 +3,13 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import type { AuthResponse } from '@/types/auth';
+import { useAuth } from '@/providers/AuthProvider';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
+  const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -32,12 +35,9 @@ export default function LoginPage() {
         throw new Error(data.error || '로그인에 실패했습니다.');
       }
 
-      // 로그인 성공 시 사용자 정보 저장
-      const userResponse = await fetch('/api/auth/me');
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        // 필요한 경우 여기서 사용자 정보를 전역 상태나 로컬 스토리지에 저장
-      }
+      // 로그인 성공 시 상태 업데이트
+      login(data.user, data.token);
+      queryClient.invalidateQueries({ queryKey: ['user'] });
 
       // 대시보드로 리다이렉트
       router.push('/dashboard');

@@ -1,9 +1,9 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
   "/api/auth/me/route": "app/api/auth/me/route.js",
-  "/api/stocks/chart/route": "app/api/stocks/chart/route.js",
   "/api/trading/account/route": "app/api/trading/account/route.js",
+  "/api/stocks/chart/route": "app/api/stocks/chart/route.js",
   "/api/trading/holdings/[stockCode]/route": "app/api/trading/holdings/[stockCode]/route.js",
   "/page": "app/page.js",
+  "/(auth)/login/page": "app/(auth)/login/page.js",
   "/dashboard/page": "app/dashboard/page.js"
 }
