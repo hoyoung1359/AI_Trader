@@ -40,12 +40,24 @@ export default function StockChart({ stockCode, stockName }: StockChartProps) {
     queryFn: async () => {
       const response = await fetch(`/api/stocks/chart?code=${stockCode}&period=${options.period}`);
       if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.msg_cd === 'EGW00201') {
+          // 초당 거래건수 초과 에러인 경우 1초 대기 후 재시도
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          const retryResponse = await fetch(`/api/stocks/chart?code=${stockCode}&period=${options.period}`);
+          if (!retryResponse.ok) {
+            throw new Error('Failed to fetch chart data after retry');
+          }
+          return retryResponse.json();
+        }
         throw new Error('Failed to fetch chart data');
       }
       return response.json();
     },
     staleTime: 1000 * 60 * 5, // 5분마다 갱신
     refetchInterval: 1000 * 60 * 5, // 5분마다 자동 갱신
+    retry: 3, // 최대 3번 재시도
+    retryDelay: 1000, // 재시도 간격 1초
   });
 
   // 차트 데이터 가공
