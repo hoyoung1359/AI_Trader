@@ -16,6 +16,10 @@ let cachedToken: string | null = null;
 let tokenExpiry: number | null = null;
 let tokenRequestPromise: Promise<string> | null = null; // 동시 요청 방지용
 
+// 토큰 발급 요청 제한 관리를 위한 변수
+let lastTokenRequestTime: number | null = null;
+const TOKEN_REQUEST_INTERVAL = 60000; // 1분(60초)
+
 interface KospiStock {
   mksc_shrn_iscd: string;  // 종목코드
   hts_kor_isnm: string;    // 종목명
@@ -113,25 +117,25 @@ async function getValidTokenFromDB() {
   }
 }
 
-async function saveTokenToDB(token: string, expiresIn: number) {
+async function saveTokenToDB(token: string) {
   try {
-    // 먼저 기존 토큰들을 모두 삭제
+    // 기존 토큰들 모두 삭제
     await supabase
       .from('access_tokens')
       .delete()
-      .lt('expires_at', new Date().toISOString());
+      .neq('token', 'dummy');
 
-    const expiresAt = new Date(Date.now() + (expiresIn * 1000));
-    
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 23 * 60 * 60 * 1000); // 23시간 후 만료
+
+    // 새 토큰 저장
     const { error } = await supabase
       .from('access_tokens')
-      .insert([
-        {
-          token,
-          expires_at: expiresAt.toISOString(),
-          created_at: new Date().toISOString()
-        }
-      ]);
+      .insert([{ 
+        token,
+        created_at: now.toISOString(),
+        expires_at: expiresAt.toISOString()
+      }]);
 
     if (error) throw error;
   } catch (error) {
@@ -142,46 +146,134 @@ async function saveTokenToDB(token: string, expiresIn: number) {
 
 export async function getAccessToken(): Promise<string> {
   try {
-    // 1. DB에서 유효한 토큰 확인
-    const cachedToken = await getValidTokenFromDB();
-    if (cachedToken) {
-      console.log('Using cached token');
-      return cachedToken;
+    // 이미 진행 중인 토큰 요청이 있다면 해당 Promise 반환
+    if (tokenRequestPromise) {
+      return tokenRequestPromise;
     }
 
-    console.log('Requesting new token...');
-
-    // 2. 새 토큰 발급
-    const response = await fetch(`${BASE_URL}/oauth2/tokenP`, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        grant_type: 'client_credentials',
-        appkey: process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_KEY,
-        appsecret: process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_SECRET,
-      }),
-    });
-
-    const data = await response.json();
-    console.log('Token API Response:', data);
-    
-    if (!response.ok || !data.access_token) {
-      console.error('Token API Error:', data);
-      throw new Error(data.error_description || 'Failed to get access token');
+    // 캐시된 토큰 확인
+    const existingToken = await getCachedToken();
+    if (existingToken) {
+      return existingToken;
     }
 
-    // 3. 새 토큰을 DB에 저장
-    await saveTokenToDB(data.access_token, data.expires_in || 86400);
-    
-    return data.access_token;
+    // 새로운 토큰 요청 Promise 생성
+    tokenRequestPromise = (async () => {
+      try {
+        // 토큰 발급 요청 제한 체크
+        if (lastTokenRequestTime && Date.now() - lastTokenRequestTime < TOKEN_REQUEST_INTERVAL) {
+          const waitTime = TOKEN_REQUEST_INTERVAL - (Date.now() - lastTokenRequestTime);
+          console.log(`Waiting ${Math.ceil(waitTime / 1000)}초 for token request limit...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+
+        console.log('Requesting new token...');
+        lastTokenRequestTime = Date.now();
+
+        const response = await fetch(`${BASE_URL}/oauth2/tokenP`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify({
+            grant_type: 'client_credentials',
+            appkey: process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_KEY,
+            appsecret: process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_SECRET,
+          }),
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok || !data.access_token) {
+          if (data.error_code === 'EGW00133') {
+            // 토큰 발급 제한에 걸린 경우, 1분 후 재시도
+            console.log('Token request limit reached, retrying in 1 minute...');
+            await new Promise(resolve => setTimeout(resolve, TOKEN_REQUEST_INTERVAL));
+            return getAccessToken();
+          }
+          console.error('Token API Error:', data);
+          throw new Error(data.error_description || 'Failed to get access token');
+        }
+
+        // 토큰 캐싱
+        cachedToken = data.access_token;
+        tokenExpiry = Date.now() + (data.expires_in * 1000);
+        await saveTokenToDB(data.access_token);
+        
+        return data.access_token;
+      } finally {
+        // 요청이 완료되면 Promise 초기화
+        tokenRequestPromise = null;
+      }
+    })();
+
+    return tokenRequestPromise;
   } catch (error) {
     console.error('Error getting access token:', error);
     throw error;
   }
 }
 
+async function getCachedToken() {
+  try {
+    // 메모리에 캐시된 토큰이 있고 만료되지 않았다면 사용
+    if (cachedToken && tokenExpiry && Date.now() < tokenExpiry) {
+      return cachedToken;
+    }
+
+    // DB에서 유효한 토큰 조회
+    const validToken = await getValidTokenFromDB();
+    if (validToken) {
+      cachedToken = validToken;
+      // 토큰 만료 10분 전까지만 사용
+      tokenExpiry = new Date().getTime() + (23 * 60 - 10) * 60 * 1000;
+      return validToken;
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting cached token:', error);
+    return null;
+  }
+}
+
+// API 호출 시 토큰 만료 체크 및 재시도 로직
+async function fetchWithTokenRetry(url: string, options: any, retryCount = 0): Promise<Response> {
+  try {
+    const response = await fetch(url, options);
+    const data = await response.json();
+
+    // 토큰 만료 또는 유효하지 않은 토큰
+    if (data.rt_cd === '1' && (data.msg_cd === 'EGW00121' || data.msg1?.includes('token'))) {
+      if (retryCount >= 2) {
+        throw new Error('Max retry count exceeded');
+      }
+
+      console.log('Token invalid or expired, getting new token...');
+      
+      // 기존 토큰 삭제
+      await supabase
+        .from('access_tokens')
+        .delete()
+        .neq('token', 'dummy');
+
+      const newToken = await getAccessToken();
+      options.headers.authorization = `Bearer ${newToken}`;
+      
+      return fetchWithTokenRetry(url, options, retryCount + 1);
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: response.status,
+      headers: response.headers
+    });
+  } catch (error) {
+    console.error('Error in fetchWithTokenRetry:', error);
+    throw error;
+  }
+}
+
+// getKospiStocks 함수 수정
 export async function getKospiStocks(stockCode: string): Promise<StockResponse> {
   try {
     const token = await getAccessToken();
@@ -190,7 +282,7 @@ export async function getKospiStocks(stockCode: string): Promise<StockResponse> 
     url.searchParams.append('FID_COND_MRKT_DIV_CODE', 'J');
     url.searchParams.append('FID_INPUT_ISCD', stockCode);
     
-    const response = await fetch(url, {
+    const response = await fetchWithTokenRetry(url.toString(), {
       method: 'GET',
       headers: {
         'content-type': 'application/json',
@@ -262,86 +354,55 @@ async function saveChartToDB(stockCode: string, period: ChartPeriod, chartData: 
   }
 }
 
-export async function getStockChart(code: string, period: string) {
+interface ChartParams {
+  code: string;
+  period: string;
+  unit?: string;
+  count?: number;
+  inqStrtDd?: string;
+  inqEndDd?: string;
+  trId: string;
+}
+
+export async function getStockChart(params: ChartParams) {
   try {
     const token = await getAccessToken();
-    console.log('Using token:', token);
-
-    const params = new URLSearchParams({
-      FID_COND_MRKT_DIV_CODE: 'J',
-      FID_INPUT_ISCD: code,
-      FID_INPUT_DATE_1: getPeriodStartDate(period),
-      FID_INPUT_DATE_2: getTodayDate(),
-      FID_PERIOD_DIV_CODE: 'D',
-      FID_ORG_ADJ_PRC: '1'
-    });
-
-    const url = `${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-price?${params}`;
     
-    const headers = {
-      'content-type': 'application/json',
-      'authorization': `Bearer ${token}`,
-      'appkey': process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_KEY!,
-      'appsecret': process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_SECRET!,
-      'tr_id': 'FHKST03010100',
-      'custtype': 'P',
-    };
+    const url = new URL(`${BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice`);
+    url.searchParams.append('fid_cond_mrkt_div_code', 'J');
+    url.searchParams.append('fid_input_iscd', params.code);
+    url.searchParams.append('fid_input_date_1', params.inqStrtDd || '');
+    url.searchParams.append('fid_input_date_2', params.inqEndDd || '');
+    url.searchParams.append('fid_period_div_code', params.period);
+    if (params.unit) {
+      url.searchParams.append('fid_input_hour_1', '0900');
+      url.searchParams.append('fid_price_div_code', params.unit);
+    }
 
-    console.log('Request URL:', url);
-    console.log('Request headers:', headers);
-    
     const response = await fetch(url, {
-      method: 'GET',
-      headers
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${token}`,
+        appkey: process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_KEY!,
+        appsecret: process.env.NEXT_PUBLIC_KOREA_INVESTMENT_API_SECRET!,
+        tr_id: params.trId,
+        custtype: 'P',
+      },
     });
 
     if (!response.ok) {
-      console.error('Chart API Error:', {
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-      
-      const errorData = await response.json().catch(() => null);
-      console.error('Error response data:', errorData);
-      
-      if (errorData?.msg_cd === 'EGW00121') {
-        // 토큰이 유효하지 않은 경우, DB에서 토큰 삭제 후 재시도
-        await supabase
-          .from('access_tokens')
-          .delete()
-          .gt('created_at', '1970-01-01');
-        
-        // 재귀적으로 한 번만 재시도
-        return getStockChart(code, period);
-      }
-      
-      throw new Error(`API request failed: ${response.status}`);
+      const errorData = await response.json();
+      console.error('Chart API Error:', errorData);
+      throw new KoreaInvestmentError(
+        errorData.msg1 || '차트 데이터를 가져오는데 실패했습니다.',
+        errorData.rt_cd
+      );
     }
 
     const data = await response.json();
-    
-    if (!data.output2 || !Array.isArray(data.output2)) {
-      console.error('Invalid chart data format:', data);
-      throw new Error('Invalid chart data format');
-    }
-
-    // 차트 데이터 포맷 변환
-    const chartData = data.output2.map((item: ChartDataItem) => ({
-      date: item.stck_bsop_date,
-      open: Number(item.stck_oprc),
-      high: Number(item.stck_hgpr),
-      low: Number(item.stck_lwpr),
-      close: Number(item.stck_clpr),
-      volume: Number(item.acml_vol)
-    }));
-
-    return {
-      ...data,
-      output: chartData.reverse() // 날짜 오름차순으로 정렬
-    };
+    return data;
   } catch (error) {
-    console.error('Error in getStockChart:', error);
+    console.error('Error fetching chart data:', error);
     throw error;
   }
 }
@@ -485,22 +546,45 @@ export async function updateStockPriceInDB(stockData: {
 
 // 백그라운드에서 주기적으로 가격 업데이트
 export async function updateAllStockPrices() {
-  for (const stock of MAJOR_STOCKS) {
-    try {
-      const data = await getKospiStocks(stock.code);
-      if (data?.output) {
-        await updateStockPriceInDB({
-          code: stock.code,
-          price: parseInt(data.output.stck_prpr) || 0,
-          change: parseInt(data.output.prdy_vrss) || 0,
-          changeRate: parseFloat(data.output.prdy_ctrt) || 0,
-          volume: parseInt(data.output.acml_vol) || 0,
-        });
+  try {
+    const stocks = MAJOR_STOCKS;
+    const updatedPrices = [];
+
+    // 순차적으로 처리하여 API 호출 제한 준수
+    for (const stock of stocks) {
+      try {
+        const data = await getKospiStocks(stock.code);
+        if (data.output) {
+          const price = {
+            code: stock.code,
+            price: parseInt(data.output.stck_prpr, 10),
+            change: parseInt(data.output.prdy_vrss, 10),
+            changeRate: parseFloat(data.output.prdy_ctrt),
+            volume: parseInt(data.output.acml_vol, 10),
+            updated_at: new Date().toISOString()
+          };
+          
+          // DB에 가격 정보 업데이트
+          const { error } = await supabase
+            .from('stock_prices')
+            .upsert([price], {
+              onConflict: 'code'
+            });
+
+          if (error) throw error;
+          updatedPrices.push(price);
+          
+          // API 호출 간격 조절 (0.5초)
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      } catch (error) {
+        console.error(`Error updating price for ${stock.code}:`, error);
       }
-      // API 호출 간 딜레이
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    } catch (error) {
-      console.error(`Error updating price for ${stock.code}:`, error);
     }
+
+    return updatedPrices;
+  } catch (error) {
+    console.error('Error updating all stock prices:', error);
+    throw error;
   }
 } 

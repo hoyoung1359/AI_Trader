@@ -4,17 +4,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import StockChart from '@/components/stocks/StockChart';
+import { useAuth } from '@/providers/AuthProvider';
 
-// 임시 주식 목록 데이터
 const STOCK_LIST = [
-  { code: '005930', name: '삼성전자', price: 73800, change: 1200, changePercent: 1.65 },
-  { code: '000660', name: 'SK하이닉스', price: 156500, change: -500, changePercent: -0.32 },
-  { code: '035720', name: '카카오', price: 56700, change: 900, changePercent: 1.61 },
-  { code: '035420', name: '네이버', price: 203000, change: 2000, changePercent: 0.99 },
-  { code: '005380', name: '현대차', price: 246500, change: -1500, changePercent: -0.61 },
+  { code: '005930', name: '삼성전자' },
+  { code: '000660', name: 'SK하이닉스' },
+  { code: '035720', name: '카카오' },
+  { code: '035420', name: 'NAVER' },
+  { code: '005380', name: '현대차' },
 ];
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [selectedStock, setSelectedStock] = useState(STOCK_LIST[0]);
 
   // 환율 데이터 가져오기
@@ -28,7 +30,7 @@ export default function DashboardPage() {
         jpyKrw: (data.rates.KRW / data.rates.JPY).toFixed(2)
       };
     },
-    staleTime: 1000 * 60 * 5, // 5분마다 갱신
+    staleTime: 1000 * 60 * 5,
   });
 
   // 비트코인 시세 가져오기
@@ -39,175 +41,153 @@ export default function DashboardPage() {
       const data = await response.json();
       return {
         price: Number(data.bpi.USD.rate.replace(',', '')).toFixed(2),
-        change: '+2.5%' // 실제로는 이전 가격과 비교하여 계산해야 함
+        change: '+2.5%'
       };
     },
-    staleTime: 1000 * 60, // 1분마다 갱신
+    staleTime: 1000 * 60,
   });
-
-  // 사용자 인증 상태 확인
-  const { data: user, isLoading } = useQuery({
-    queryKey: ['user'],
-    queryFn: async () => {
-      const response = await fetch('/api/auth/me');
-      if (!response.ok) {
-        return null;
-      }
-      return response.json();
-    },
-    retry: false,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
-      </div>
-    );
-  }
 
   if (!user) {
     return (
-      <div className="p-8 text-center">
-        <h1 className="text-2xl font-bold mb-4">접근 권한이 없습니다</h1>
-        <p>이 페이지를 보려면 로그인이 필요합니다.</p>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-gray-900">로그인이 필요합니다</h2>
+          <p className="mt-2 text-gray-600">서비스를 이용하려면 로그인해주세요.</p>
+          <button
+            onClick={() => router.push('/login')}
+            className="mt-4 px-4 py-2 bg-gradient-to-r from-indigo-600 to-blue-500 text-white rounded-lg hover:from-indigo-700 hover:to-blue-600 transition-colors"
+          >
+            로그인하기
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-8 bg-gray-50 min-h-screen">
-      <div className="max-w-7xl mx-auto">
-        <h1 className="text-2xl font-bold mb-8 text-gray-800">My Portfolio</h1>
+    <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="max-w-7xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">My Portfolio</h1>
+          <div className="text-sm text-gray-500">
+            마지막 업데이트: {new Date().toLocaleString()}
+          </div>
+        </div>
         
         {/* 환율 및 비트코인 시세 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mr-3">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg">
                   <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">USD/KRW</p>
-                  <p className="text-lg font-bold text-gray-800">₩ {exchangeRates?.usdKrw || '-'}</p>
+                  <span className="text-sm text-gray-500">USD/KRW</span>
+                  <div className="text-lg font-semibold text-gray-900">₩ {exchangeRates?.usdKrw || '-'}</div>
                 </div>
               </div>
-              <div className="text-green-500 text-sm font-semibold">
-                +0.2%
+              <div className="flex flex-col items-end">
+                <span className="text-sm px-2 py-1 bg-green-100 text-green-800 rounded-full">▲ 0.2%</span>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 11V9a2 2 0 00-2-2m2 4v4a2 2 0 104 0v-1m-4-3H9m2 0h4m6 1a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">JPY/KRW</p>
-                  <p className="text-lg font-bold text-gray-800">₩ {exchangeRates?.jpyKrw || '-'}</p>
+                  <span className="text-sm text-gray-500">JPY/KRW</span>
+                  <div className="text-lg font-semibold text-gray-900">₩ {exchangeRates?.jpyKrw || '-'}</div>
                 </div>
               </div>
-              <div className="text-red-500 text-sm font-semibold">
-                -0.1%
+              <div className="flex flex-col items-end">
+                <span className="text-sm px-2 py-1 bg-red-100 text-red-800 rounded-full">▼ 0.1%</span>
               </div>
             </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center">
-                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-3">
-                  <svg className="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-br from-yellow-50 to-orange-50 rounded-lg">
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Bitcoin</p>
-                  <p className="text-lg font-bold text-gray-800">$ {bitcoin?.price || '-'}</p>
+                  <span className="text-sm text-gray-500">Bitcoin</span>
+                  <div className="text-lg font-semibold text-gray-900">$ {bitcoin?.price || '-'}</div>
                 </div>
               </div>
-              <div className="text-green-500 text-sm font-semibold">
-                {bitcoin?.change || '-'}
+              <div className="flex flex-col items-end">
+                <span className="text-sm px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                  {bitcoin?.change || '-'}
+                </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* 메인 컨텐츠 영역 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {/* 메인 차트와 종목 목록 */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           {/* 메인 차트 */}
-          <div className="md:col-span-2 bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-bold text-gray-800">{selectedStock.name}</h2>
-                <p className="text-sm text-gray-500">{selectedStock.code}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-gray-800">{selectedStock.price.toLocaleString()}원</p>
-                <div className="flex items-center justify-end space-x-2">
-                  <p className={`text-sm font-semibold ${
-                    selectedStock.change > 0 ? 'text-red-500' : 'text-blue-500'
-                  }`}>
-                    {selectedStock.change > 0 ? '+' : ''}{selectedStock.change.toLocaleString()}원
-                  </p>
-                  <p className={`text-sm font-semibold ${
-                    selectedStock.changePercent > 0 ? 'text-red-500' : 'text-blue-500'
-                  }`}>
-                    ({selectedStock.changePercent > 0 ? '+' : ''}{selectedStock.changePercent}%)
-                  </p>
+          <div className="md:col-span-3 bg-white rounded-xl shadow-sm">
+            <div className="p-6 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">{selectedStock.name}</h2>
+                  <p className="text-sm text-gray-500">{selectedStock.code}</p>
                 </div>
               </div>
             </div>
-            <StockChart 
-              stockCode={selectedStock.code} 
-              stockName={selectedStock.name}
-            />
+            <div className="p-6">
+              <StockChart 
+                stockCode={selectedStock.code} 
+                stockName={selectedStock.name}
+                showOrderButtons={false}
+              />
+            </div>
           </div>
 
-          {/* 종목 리스트 */}
-          <div className="bg-white rounded-xl shadow-sm p-6 hover:shadow-md transition-shadow">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">대표 종목</h2>
-            <div className="space-y-4">
-              {STOCK_LIST.map((stock) => (
-                <div
-                  key={stock.code}
-                  className={`p-4 rounded-lg cursor-pointer transition-all ${
-                    selectedStock.code === stock.code
-                      ? 'bg-indigo-50 border border-indigo-100'
-                      : 'hover:bg-gray-50'
-                  }`}
-                  onClick={() => setSelectedStock(stock)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-semibold text-gray-800">{stock.name}</h3>
-                      <p className="text-sm text-gray-500">{stock.code}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-gray-800">{stock.price.toLocaleString()}원</p>
-                      <div className="flex items-center justify-end space-x-2">
-                        <p className={`text-sm font-medium ${
-                          stock.change > 0 ? 'text-red-500' : 'text-blue-500'
-                        }`}>
-                          {stock.change > 0 ? '+' : ''}{stock.change.toLocaleString()}
-                        </p>
-                        <p className={`text-sm font-medium ${
-                          stock.changePercent > 0 ? 'text-red-500' : 'text-blue-500'
-                        }`}>
-                          ({stock.changePercent > 0 ? '+' : ''}{stock.changePercent}%)
-                        </p>
+          {/* 종목 목록 */}
+          <div className="bg-white rounded-xl shadow-sm">
+            <div className="p-6 border-b border-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900">대표 종목</h2>
+            </div>
+            <div className="p-4">
+              <div className="space-y-2">
+                {STOCK_LIST.map((stock) => (
+                  <button
+                    key={stock.code}
+                    onClick={() => setSelectedStock(stock)}
+                    className={`w-full p-4 rounded-lg transition-colors ${
+                      selectedStock.code === stock.code
+                        ? 'bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-left">
+                        <h3 className="font-medium text-gray-900">{stock.name}</h3>
+                        <p className="text-sm text-gray-500">{stock.code}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-medium text-gray-900">
+                          {/* 실시간 가격 데이터 연동 시 추가 */}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>

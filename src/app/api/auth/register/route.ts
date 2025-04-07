@@ -16,6 +16,7 @@ export async function POST(request: Request) {
       {
         p_email: email,
         raw_password: password,
+        p_name: name
       }
     );
 
@@ -54,6 +55,9 @@ export async function POST(request: Request) {
       }
     }
 
+    // 잠시 대기하여 DB 업데이트가 완료되도록 함
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     // 3. 자동 로그인
     const { data: loginData, error: loginError } = await supabase.rpc(
       'login_user',
@@ -63,10 +67,16 @@ export async function POST(request: Request) {
       }
     );
 
-    if (loginError || !loginData || loginData.length === 0) {
+    if (loginError) {
       console.error('자동 로그인 실패:', loginError);
-      return NextResponse.json({ 
-        message: '회원가입은 완료되었으나, 자동 로그인에 실패했습니다. 로그인 페이지에서 다시 시도해주세요.' 
+      // 로그인 실패 시에도 회원가입은 성공했으므로 200 상태코드 반환
+      return NextResponse.json({
+        user: {
+          id: newUser.user_id,
+          email: newUser.user_email,
+          name: newUser.user_name
+        },
+        message: '회원가입은 완료되었으나, 자동 로그인에 실패했습니다. 로그인 페이지에서 다시 시도해주세요.'
       });
     }
 

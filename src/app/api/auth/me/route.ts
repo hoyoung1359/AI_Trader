@@ -19,36 +19,65 @@ export async function GET(request: Request) {
       );
     }
 
-    // access_tokens 테이블에서 토큰 확인
-    const { data: tokenData, error: tokenError } = await supabase
-      .from('access_tokens')
-      .select('user_id')
-      .eq('token', token)
-      .single();
+    // 토큰 유효성 검사
+    const { data: tokenData, error: tokenError } = await supabase.rpc(
+      'get_valid_token',
+      { p_token: token }
+    );
 
-    if (tokenError || !tokenData) {
-      // 토큰이 유효하지 않으면 401 반환
-      return NextResponse.json(
-        { error: 'Invalid token' },
+    if (tokenError || !tokenData || tokenData.length === 0) {
+      // 토큰이 만료되었거나 유효하지 않은 경우 쿠키 삭제
+      const response = NextResponse.json(
+        { error: 'Invalid or expired token' },
         { status: 401 }
       );
+      response.cookies.delete('auth_token');
+      return response;
     }
 
-    // 유효한 토큰이면 사용자 정보 조회
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('id, email, name')
-      .eq('id', tokenData.user_id)
-      .single();
+    const userData = tokenData[0];
+    const expiresAt = new Date(userData.expires_at);
+    const now = new Date();
+    const daysLeft = (expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
 
-    if (userError || !user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
+    // 토큰 만료까지 7일 이내로 남은 경우 토큰 갱신
+    if (daysLeft < 7) {
+      const { data: refreshData, error: refreshError } = await supabase.rpc(
+        'login_user',
+        {
+          p_email: userData.email,
+          raw_password: '' // 비밀번호 없이 토큰만 갱신
+        }
       );
+
+      if (!refreshError && refreshData && refreshData.length > 0) {
+        const response = NextResponse.json({
+          id: userData.user_id,
+          email: userData.email,
+          name: userData.name
+        });
+
+        // 새로운 토큰으로 쿠키 업데이트
+        response.cookies.set({
+          name: 'auth_token',
+          value: refreshData[0].auth_token,
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          maxAge: 30 * 24 * 60 * 60 // 30일
+        });
+
+        return response;
+      }
     }
 
-    return NextResponse.json(user);
+    // 토큰이 유효하고 갱신이 필요없는 경우
+    return NextResponse.json({
+      id: userData.user_id,
+      email: userData.email,
+      name: userData.name
+    });
+
   } catch (error) {
     console.error('Error in me route:', error);
     return NextResponse.json(

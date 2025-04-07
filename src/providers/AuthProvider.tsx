@@ -18,14 +18,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const checkAuth = async () => {
+      // 현재 로그인 또는 회원가입 페이지인 경우 인증 체크 스킵
+      if (window.location.pathname === '/login' || window.location.pathname === '/register') {
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const response = await fetch('/api/auth/me');
+        const response = await fetch('/api/auth/me', {
+          credentials: 'include',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
+        
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
+          localStorage.setItem('userInfo', JSON.stringify(userData));
         } else {
           setUser(null);
           localStorage.removeItem('userInfo');
+          if (response.status === 401 && window.location.pathname !== '/login') {
+            // 토큰이 만료되고 현재 로그인 페이지가 아닌 경우에만 리다이렉트
+            window.location.href = '/login';
+          }
         }
       } catch (error) {
         console.error('인증 확인 에러:', error);
@@ -36,7 +53,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // 페이지 로드 시와 포커스를 받았을 때 인증 상태 확인
     checkAuth();
+    
+    // 로그인/회원가입 페이지가 아닐 때만 focus 이벤트 리스너 추가
+    if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+      window.addEventListener('focus', checkAuth);
+      return () => {
+        window.removeEventListener('focus', checkAuth);
+      };
+    }
   }, []);
 
   const login = (user: User, token: string) => {
@@ -49,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch('/api/auth/logout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
       });
 
       if (!response.ok) {
@@ -58,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // 상태 및 로컬 스토리지 초기화
       setUser(null);
       localStorage.removeItem('userInfo');
+      window.location.href = '/login';
     } catch (error) {
       console.error('로그아웃 에러:', error);
       throw error;

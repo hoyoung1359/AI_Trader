@@ -27,7 +27,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!loginData || loginData.length === 0) {
+    if (!loginData || loginData.length === 0 || !loginData[0].auth_token) {
       return NextResponse.json(
         { error: '로그인 처리 중 오류가 발생했습니다' },
         { status: 500 }
@@ -36,42 +36,20 @@ export async function POST(request: Request) {
 
     const userData = loginData[0];
 
-    // 2. access_tokens 테이블에 토큰 저장
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 1); // 24시간 후 만료
-
-    const { error: tokenError } = await supabase
-      .from('access_tokens')
-      .insert([
-        {
-          user_id: userData.user_id,
-          token: userData.token,
-          expires_at: expiresAt.toISOString()
-        }
-      ]);
-
-    if (tokenError) {
-      console.error('토큰 저장 에러:', tokenError);
-      return NextResponse.json(
-        { error: '로그인 처리 중 오류가 발생했습니다' },
-        { status: 500 }
-      );
-    }
-
-    // 3. 응답 생성
+    // 2. 응답 생성
     const response = NextResponse.json({
       user: {
         id: userData.user_id,
         email: userData.user_email,
         name: userData.user_name
       },
-      token: userData.token
+      token: userData.auth_token
     });
 
-    // 4. 쿠키에 토큰 저장
+    // 3. 쿠키에 토큰 저장
     response.cookies.set({
       name: 'auth_token',
-      value: userData.token,
+      value: userData.auth_token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
